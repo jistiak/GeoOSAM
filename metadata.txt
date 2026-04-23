@@ -1,11 +1,11 @@
 [general]
 name=GeoOSAM
-qgisMinimumVersion=3.16
-qgisMaximumVersion=3.99
+qgisMinimumVersion=4.0
+qgisMaximumVersion=4.99
 description=Advanced segmentation tool with intelligent SAM 2.1/Ultralytics SAM2.1_B selection, exceptional CPU performance (<1s on 24+ cores), GPU acceleration, threading, and professional workflow features
-about=GeoOSAM brings Meta's latest Segment Anything Model (SAM 2.1) and Ultralytics SAM2.1_B to QGIS with intelligent hardware optimization. Features automatic model selection: SAM 2.1 for GPU systems (CUDA/Apple Silicon) and Ultralytics SAM2.1_B for CPU-only systems, providing 5-10x performance improvements. Ultralytics automatically handles SAM2.1_B downloads for seamless CPU setup. Includes GPU/CPU acceleration with automatic device detection, multi-threaded processing for responsive UI, Point and BBox segmentation modes, 12 pre-defined classes (Buildings, Roads, Vegetation, Water, Vehicle, Ship, etc.) plus custom class creation, Undo functionality for mistake correction, Custom output folder selection, Optional debug mask saving, Automatic raster layer re-selection, Professional shapefile export with detailed attributes. Perfect for remote sensing analysis, urban planning, environmental monitoring, and geospatial segmentation tasks. Optimized for NVIDIA GPU, Apple Silicon, and multi-core CPU processing with intelligent model selection for optimal performance on any hardware.
+about=GeoOSAM brings Meta's latest Segment Anything Model (SAM 2.1) and Ultralytics SAM2.1_B to QGIS with intelligent hardware optimization. Features automatic model selection: SAM 2.1 for GPU systems (CUDA/Apple Silicon) and Ultralytics SAM2.1_B for CPU-only systems, providing 5-10x performance improvements. Ultralytics automatically handles SAM2.1_B downloads for seamless CPU setup. Includes GPU/CPU acceleration with automatic device detection, multi-threaded processing for responsive UI, Point and BBox segmentation modes, an expanded default class catalog with granular hardscape, vegetation, transport, roof, and rooftop-equipment classes plus custom class creation, Undo functionality for mistake correction, Custom output folder selection, Optional debug mask saving, Automatic raster layer re-selection, and professional multi-format export with detailed attributes. Perfect for remote sensing analysis, urban planning, environmental monitoring, and geospatial segmentation tasks. Optimized for NVIDIA GPU, Apple Silicon, and multi-core CPU processing with intelligent model selection for optimal performance on any hardware.
 
-version=1.3.3
+version=1.3.4
 author=Ofer Butbega
 email=geoosamplugin@gmail.com
 
@@ -32,7 +32,14 @@ server=False
 plugin_dependencies=
 
 # Changelog (REQUIRED for updates)
-changelog=1.3.3 - Multi-Point, Export Formats & Fixes (2026-02-07)
+changelog=1.3.4 - Expanded Class Catalog & Compatibility Maintenance (2026-04-23)
+    - UPDATED: Declared compatibility range to QGIS 4.0 - 4.99 with Qt6-ready UI compatibility
+    - NEW: Added granular default classes for hardscape, vegetation, transport, roofs, and rooftop fixtures
+    - ENHANCED: Centralized class-to-helper mapping so related classes reuse the right detection rules
+    - ENHANCED: Class-specific batch defaults, hints, and similar-object exemplar sizing for the expanded catalog
+    - UPDATED: Refreshed README/user guide text to reflect the broader default dataset support
+
+    1.3.3 - Multi-Point, Export Formats & Fixes (2026-02-07)
     - NEW: Multi-point segmentation with Shift+click (add) and Ctrl+click (subtract) point accumulation
     - NEW: Visual +/- markers on map showing accumulated positive/negative points
     - NEW: Multi-format export support (GeoPackage, Shapefile, GeoJSON, FlatGeobuf)
@@ -153,4 +160,4 @@ changelog=1.3.3 - Multi-Point, Export Formats & Fixes (2026-02-07)
     - Cross-platform compatibility with Windows, macOS, and Linux
 
 # Update and support information
-update_date=2026-02-07
+update_date=2026-04-23

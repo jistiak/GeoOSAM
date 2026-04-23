@@ -69,7 +69,7 @@ QSIZEPOLICY_MINIMUM = qt_enum(QtWidgets.QSizePolicy, "Policy.Minimum", "Minimum"
 # fmt: off
 plugin_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(plugin_dir)
-from helpers import create_detection_helper
+from helpers import create_detection_helper, class_uses_helper
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
@@ -568,15 +568,15 @@ _THREADS_CONFIGURED = False
 def merge_nearby_masks_class_aware(masks, class_name, buffer_px=3):
     """Class-aware merging with different strategies per class"""
 
-    if class_name in ['Buildings', 'Residential']:
+    if class_uses_helper(class_name, 'building', 'residential'):
         # For buildings: NO merging - each detection should stay separate
         return masks
 
-    elif class_name in ['Vessels', 'Vehicle']:
+    elif class_uses_helper(class_name, 'vessel', 'vehicle'):
         # For vehicles: minimal merging (1-2px buffer)
         buffer_px = 1
 
-    elif class_name in ['Water', 'Agriculture', 'Vegetation']:
+    elif class_uses_helper(class_name, 'water', 'agriculture', 'vegetation'):
         # For large areas: allow more aggressive merging
         buffer_px = 5
 
@@ -606,17 +606,17 @@ def merge_nearby_masks_class_aware(masks, class_name, buffer_px=3):
 def dedupe_or_merge_masks_smart(masks, class_name, iou_thresh=0.3, merge=True):
     """Smart deduplication based on class type"""
 
-    if class_name in ['Buildings', 'Residential']:
+    if class_uses_helper(class_name, 'building', 'residential'):
         # For buildings: Only merge if VERY high overlap (likely same building)
         iou_thresh = 0.7  # Much higher threshold
         merge = False     # Don't merge, just remove duplicates
 
-    elif class_name in ['Vehicle', 'Vessels']:
+    elif class_uses_helper(class_name, 'vehicle', 'vessel'):
         # For vehicles: Moderate overlap allowed
         iou_thresh = 0.4
         merge = True
 
-    elif class_name in ['Water', 'Agriculture', 'Vegetation']:
+    elif class_uses_helper(class_name, 'water', 'agriculture', 'vegetation'):
         # For large areas: Allow merging of adjacent areas
         iou_thresh = 0.1
         merge = True
@@ -1812,12 +1812,14 @@ class OptimizedSAM2Worker(QThread):
 
     def _get_background_threshold(self, bbox_area, class_name):
         """Get class-specific background threshold"""
-        if class_name in ['Vessels', 'Vehicle']:
+        if class_uses_helper(class_name, 'vessel', 'vehicle'):
             return bbox_area * 0.4  # Smaller threshold - reject large water areas
-        elif class_name in ['Buildings', 'Industrial']:
+        elif class_uses_helper(class_name, 'building', 'residential'):
             return bbox_area * 0.6  # Medium threshold
-        elif class_name in ['Water', 'Agriculture']:
+        elif class_uses_helper(class_name, 'water', 'agriculture'):
             return bbox_area * 0.9  # Large threshold - allow big areas
+        elif class_uses_helper(class_name, 'vegetation'):
+            return bbox_area * 0.8
         else:
             return bbox_area * 0.5  # Default
 
@@ -1858,7 +1860,7 @@ class OptimizedSAM2Worker(QThread):
         compactness = 4 * np.pi * contour_area / (perimeter * perimeter) if perimeter > 0 else 0
 
         # CLASS-SPECIFIC VALIDATION
-        if class_name in ['Vessels', 'Vehicle']:
+        if class_uses_helper(class_name, 'vessel', 'vehicle'):
             # Boats/vehicles: Prefer compact, reasonably-sized objects
             return (
                 0.2 <= aspect_ratio <= 8.0 and      # Boat/car-like aspect ratio
@@ -1868,7 +1870,7 @@ class OptimizedSAM2Worker(QThread):
                 contour_area >= self.min_object_size * 0.6  # Size validation
             )
 
-        elif class_name in ['Buildings', 'Industrial']:
+        elif class_uses_helper(class_name, 'building', 'residential'):
             # Buildings: Allow larger, more rectangular objects
             return (
                 0.1 <= aspect_ratio <= 15.0 and     # Building-like ratios
@@ -1876,14 +1878,14 @@ class OptimizedSAM2Worker(QThread):
                 contour_area >= self.min_object_size * 0.8
             )
 
-        elif class_name in ['Water', 'Agriculture']:
+        elif class_uses_helper(class_name, 'water', 'agriculture'):
             # Large areas: Allow big, irregular shapes
             return (
                 solidity >= 0.2 and                 # Can be irregular
                 contour_area >= self.min_object_size
             )
 
-        elif class_name == 'Vegetation':
+        elif class_uses_helper(class_name, 'vegetation'):
             # Trees: Can be irregular, various sizes
             return (
                 0.1 <= aspect_ratio <= 10.0 and
@@ -1902,23 +1904,23 @@ class OptimizedSAM2Worker(QThread):
 
     def _apply_class_specific_preprocessing(self, mask, class_name):
         """Apply class-specific preprocessing to improve detection"""
-        if class_name in ['Vessels', 'Vehicle']:
+        if class_uses_helper(class_name, 'vessel', 'vehicle'):
             # For boats/vehicles: Use opening to separate touching objects
             kernel = np.ones((3, 3), np.uint8)
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
 
-        elif class_name in ['Buildings', 'Industrial']:
+        elif class_uses_helper(class_name, 'building', 'residential'):
             # For buildings: Use closing to fill gaps, less aggressive separation
             kernel = np.ones((5, 5), np.uint8)
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-        elif class_name in ['Vegetation', 'Agriculture']:
+        elif class_uses_helper(class_name, 'vegetation', 'agriculture'):
             # For vegetation: Use gradient to find edges, then close
             kernel = np.ones((3, 3), np.uint8)
             mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-        elif class_name == 'Water':
+        elif class_uses_helper(class_name, 'water'):
             # For water: Minimal processing to preserve large areas
             kernel = np.ones((7, 7), np.uint8)
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
@@ -2280,6 +2282,36 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             'description': 'Parking lots and areas',
             'batch_defaults': {'min_size': 150, 'max_objects': 15}
         },
+        'Cobblestone' : {
+            'color': '139,119,101',
+            'description': 'Stone-paved hardscape surfaces',
+            'batch_defaults': {'min_size': 120, 'max_objects': 20}
+        },
+        'Asphalt'     : {
+            'color': '70,70,70',
+            'description': 'Dark paved transport surfaces',
+            'batch_defaults': {'min_size': 160, 'max_objects': 18}
+        },
+        'Large Pavement Stones' : {
+            'color': '176,146,122',
+            'description': 'Large-format paving stone areas',
+            'batch_defaults': {'min_size': 120, 'max_objects': 18}
+        },
+        'Gravel'      : {
+            'color': '190,190,160',
+            'description': 'Loose aggregate surfaces and tracks',
+            'batch_defaults': {'min_size': 140, 'max_objects': 18}
+        },
+        'Small pavement stones' : {
+            'color': '205,170,125',
+            'description': 'Fine paving stone surfaces',
+            'batch_defaults': {'min_size': 100, 'max_objects': 24}
+        },
+        'Pavement stones pervious' : {
+            'color': '154,205,50',
+            'description': 'Permeable paved surfaces',
+            'batch_defaults': {'min_size': 120, 'max_objects': 18}
+        },
         'Residential' : {
             'color': '255,105,180', 
             'description': 'Housing areas',
@@ -2289,6 +2321,21 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             'color': '105,105,105', 
             'description': 'Streets, highways, and pathways',
             'batch_defaults': {'min_size': 200, 'max_objects': 10}
+        },
+        'Railway'     : {
+            'color': '112,128,144',
+            'description': 'Rail lines and rail corridors',
+            'batch_defaults': {'min_size': 180, 'max_objects': 14}
+        },
+        'Bare ground or stone' : {
+            'color': '160,132,100',
+            'description': 'Bare soil, exposed rock, and mineral ground',
+            'batch_defaults': {'min_size': 200, 'max_objects': 12}
+        },
+        'Bike lane'   : {
+            'color': '50,205,50',
+            'description': 'Bike lanes and cycle paths',
+            'batch_defaults': {'min_size': 90, 'max_objects': 22}
         },
         'Vessels'     : {
             'color': '0,206,209',   
@@ -2305,10 +2352,85 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             'description': 'Trees, grass, and parks',
             'batch_defaults': {'min_size': 30, 'max_objects': 100}
         },
+        'Field'       : {
+            'color': '218,165,32',
+            'description': 'Managed agricultural or open field parcels',
+            'batch_defaults': {'min_size': 250, 'max_objects': 12}
+        },
+        'Grass'       : {
+            'color': '124,252,0',
+            'description': 'Grass cover and lawn surfaces',
+            'batch_defaults': {'min_size': 80, 'max_objects': 40}
+        },
+        'Greenfield'  : {
+            'color': '60,179,113',
+            'description': 'Unbuilt green open land',
+            'batch_defaults': {'min_size': 150, 'max_objects': 18}
+        },
+        'Tree Canopy' : {
+            'color': '0,100,0',
+            'description': 'Tree crowns and dense canopy cover',
+            'batch_defaults': {'min_size': 60, 'max_objects': 50}
+        },
+        'Artificial Turf' : {
+            'color': '46,139,87',
+            'description': 'Synthetic turf and sport field surfaces',
+            'batch_defaults': {'min_size': 100, 'max_objects': 20}
+        },
         'Water'       : {
             'color': '30,144,255',  
             'description': 'Rivers, lakes, and ponds',
-            'batch_defaults': {'min_size': 500, 'max_objects': 8}   # Large areas
+            'batch_defaults': {'min_size': 250, 'max_objects': 8}
+        },
+        'Concrete'    : {
+            'color': '169,169,169',
+            'description': 'Concrete slabs, aprons, and hardscape',
+            'batch_defaults': {'min_size': 150, 'max_objects': 18}
+        },
+        'PV'          : {
+            'color': '65,105,225',
+            'description': 'Photovoltaic panels and solar arrays',
+            'batch_defaults': {'min_size': 25, 'max_objects': 45}
+        },
+        'Thermo'      : {
+            'color': '255,99,71',
+            'description': 'Solar thermal collectors and rooftop thermal units',
+            'batch_defaults': {'min_size': 25, 'max_objects': 35}
+        },
+        'Window'      : {
+            'color': '135,206,235',
+            'description': 'Facade and roof window openings',
+            'batch_defaults': {'min_size': 20, 'max_objects': 60}
+        },
+        'Glass roof'  : {
+            'color': '176,224,230',
+            'description': 'Transparent or translucent roof sections',
+            'batch_defaults': {'min_size': 60, 'max_objects': 25}
+        },
+        'Green roof'  : {
+            'color': '107,142,35',
+            'description': 'Vegetated roof surfaces',
+            'batch_defaults': {'min_size': 120, 'max_objects': 15}
+        },
+        'Red roof'    : {
+            'color': '178,34,34',
+            'description': 'Red-toned roof coverings',
+            'batch_defaults': {'min_size': 100, 'max_objects': 25}
+        },
+        'Dark roof'   : {
+            'color': '47,79,79',
+            'description': 'Dark roof coverings and membranes',
+            'batch_defaults': {'min_size': 100, 'max_objects': 25}
+        },
+        'Industrial roof' : {
+            'color': '106,90,205',
+            'description': 'Large industrial and warehouse roof spans',
+            'batch_defaults': {'min_size': 180, 'max_objects': 15}
+        },
+        'Solar tube'  : {
+            'color': '255,215,120',
+            'description': 'Tubular daylight devices and roof penetrations',
+            'batch_defaults': {'min_size': 20, 'max_objects': 30}
         }
     }
 
@@ -2323,6 +2445,40 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         'GeoJSON (.geojson)': {'driver': 'GeoJSON', 'ext': '.geojson'},
         'FlatGeobuf (.fgb)': {'driver': 'FlatGeobuf', 'ext': '.fgb'},
     }
+
+    @classmethod
+    def _tooltip_range(cls, class_names, setting_key, suffix=""):
+        values = [
+            cls.DEFAULT_CLASSES[name]['batch_defaults'][setting_key]
+            for name in class_names
+            if name in cls.DEFAULT_CLASSES
+        ]
+        if not values:
+            return "n/a"
+        low = min(values)
+        high = max(values)
+        return f"~{low}{suffix}" if low == high else f"~{low}-{high}{suffix}"
+
+    @classmethod
+    def _build_min_size_tooltip(cls):
+        return (
+            "Minimum object size in pixels\n"
+            f"• Roof fixtures/windows: {cls._tooltip_range(['PV', 'Thermo', 'Window', 'Solar tube'], 'min_size', 'px')}\n"
+            f"• Vehicles/vessels: {cls._tooltip_range(['Vehicle', 'Vessels'], 'min_size', 'px')}\n"
+            f"• Buildings/roofs: {cls._tooltip_range(['Buildings', 'Residential', 'Industrial', 'Glass roof', 'Green roof', 'Red roof', 'Dark roof', 'Industrial roof'], 'min_size', 'px')}\n"
+            f"• Tree canopy/grass: {cls._tooltip_range(['Vegetation', 'Grass', 'Greenfield', 'Tree Canopy', 'Artificial Turf'], 'min_size', 'px')}"
+        )
+
+    @classmethod
+    def _build_max_objects_tooltip(cls):
+        return (
+            "Maximum objects to detect\n"
+            f"• Roof fixtures/windows: {cls._tooltip_range(['PV', 'Thermo', 'Window', 'Solar tube'], 'max_objects')}\n"
+            f"• Vehicles/vessels: {cls._tooltip_range(['Vehicle', 'Vessels'], 'max_objects')}\n"
+            f"• Tree canopy/grass: {cls._tooltip_range(['Vegetation', 'Grass', 'Greenfield', 'Tree Canopy', 'Artificial Turf'], 'max_objects')}\n"
+            f"• Large surfaces/water: {cls._tooltip_range(['Water', 'Agriculture', 'Field', 'Concrete', 'Asphalt'], 'max_objects')}\n"
+            "• UI cap stays at 120 to keep dense batch runs responsive"
+        )
 
     def __init__(self, iface, parent=None):
         super().__init__("", parent)
@@ -2380,7 +2536,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         # Batch mode settings
         self.batch_mode_enabled = False
         self.min_object_size = 50  # Minimum pixels for valid object
-        self.max_objects = 20  # Prevent too many small objects
+        self.max_objects = 25  # Generic default; class profiles can tune this up or down
         self.duplicate_threshold = 0.85  # Spatial overlap threshold for duplicates (very lenient for shape-based detection)
 
         self._setup_ui()
@@ -3516,7 +3672,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             }
         """)
         # ENHANCED: Add helpful tooltip with class recommendations
-        self.minSizeSpinBox.setToolTip("Minimum object size in pixels\n• Buildings: ~100px\n• Vehicles: ~15px\n• Vessels: ~30px\n• Trees: ~25px")
+        self.minSizeSpinBox.setToolTip(self._build_min_size_tooltip())
         size_layout.addWidget(size_label)
         size_layout.addWidget(self.minSizeSpinBox)
         size_layout.addStretch()
@@ -3528,8 +3684,8 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         max_label.setStyleSheet("font-size: 10px; color: #667085;")
         max_label.setFixedWidth(50)  # Fixed width
         self.maxObjectsSpinBox = QtWidgets.QSpinBox()
-        self.maxObjectsSpinBox.setRange(1, 50)
-        self.maxObjectsSpinBox.setValue(20)
+        self.maxObjectsSpinBox.setRange(1, 120)
+        self.maxObjectsSpinBox.setValue(25)
         self.maxObjectsSpinBox.setFixedWidth(50)  # Fixed width
         self.maxObjectsSpinBox.setStyleSheet("""
             QSpinBox { 
@@ -3538,7 +3694,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             }
         """)
         # ENHANCED: Add helpful tooltip with class recommendations
-        self.maxObjectsSpinBox.setToolTip("Maximum objects to detect\n• Vehicles: ~40\n• Vessels: ~30\n• Trees: ~35\n• Buildings: ~15")
+        self.maxObjectsSpinBox.setToolTip(self._build_max_objects_tooltip())
         max_layout.addWidget(max_label)
         max_layout.addWidget(self.maxObjectsSpinBox)
         max_layout.addStretch()
@@ -3700,12 +3856,22 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
     def _reset_batch_defaults(self):
         """Reset to generic batch defaults when no class is selected"""
         default_min_size = 50
-        default_max_objects = 20
+        default_max_objects = 25
 
         self.minSizeSpinBox.setValue(default_min_size)
         self.maxObjectsSpinBox.setValue(default_max_objects)
         self.min_object_size = default_min_size
         self.max_objects = default_max_objects
+        self.classHintsLabel.setText("Auto-adjusts based on selected class")
+
+    def _set_class_hint(self, class_name, class_info):
+        """Show a compact hint for the selected class profile."""
+        defaults = class_info.get('batch_defaults', {})
+        description = class_info.get('description', 'Custom class')
+        min_size = defaults.get('min_size', 50)
+        max_objects = defaults.get('max_objects', 20)
+        self.classHintsLabel.setText(
+            f"{class_name}: {description} • {min_size}px min • {max_objects} max")
 
     def _on_class_changed(self):
         selected_data = self.classComboBox.currentData()
@@ -3713,6 +3879,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             self.current_class = selected_data
             class_info = self.classes[selected_data]
             self.currentClassLabel.setText(f"Current: {selected_data}")
+            self._set_class_hint(selected_data, class_info)
 
             color = class_info['color']
             try:
@@ -3790,7 +3957,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             self.classes[class_name] = {
                 'color': color, 
                 'description': description,
-                'batch_defaults': {'min_size': 50, 'max_objects': 20}  # Generic defaults
+                'batch_defaults': {'min_size': 50, 'max_objects': 25}  # Generic defaults
             }
 
             self.classComboBox.addItem(class_name, class_name)
@@ -4320,10 +4487,12 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
     def _point_to_exemplar_bbox(self, pt):
         """Convert point click to exemplar bounding box for similar mode"""
         # Create small bbox around point for exemplar
-        # Size varies by class - larger for buildings, smaller for vehicles
-        if self.current_class in ['Buildings', 'Residential']:
+        # Size varies by class defaults - larger for big roofs/buildings, smaller for fine details
+        class_info = self.classes.get(self.current_class, {})
+        min_size = class_info.get('batch_defaults', {}).get('min_size', 50)
+        if min_size >= 100:
             pixel_radius = 50  # 100x100 px bbox for large objects
-        elif self.current_class in ['Vehicle', 'Vessels']:
+        elif min_size <= 30:
             pixel_radius = 25  # 50x50 px bbox for small objects
         else:
             pixel_radius = 35  # Default 70x70 px

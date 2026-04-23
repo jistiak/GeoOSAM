@@ -19,7 +19,7 @@ We welcome contributions from the geospatial and AI communities to help make adv
 
 ### Prerequisites
 
-- **QGIS 3.16+** for testing
+- **QGIS 4.0+ / Qt6** for testing
 - **Python 3.7+** with PyTorch
 - **Git** for version control
 - **GitHub account** for collaboration
@@ -62,7 +62,7 @@ mklink /D "C:\Users\%USERNAME%\AppData\Roaming\QGIS\QGIS3\profiles\default\pytho
 **Environment:**
 
 - OS: [Windows 11 / macOS 12 / Ubuntu 20.04]
-- QGIS Version: [3.28.12]
+- QGIS Version: [4.01.0]
 - Plugin Version: [1.0.0]
 - Python Version: [3.9.16]
 - GPU: [NVIDIA RTX 4090 / Apple M2 / None]

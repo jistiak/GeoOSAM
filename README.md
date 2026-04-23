@@ -18,7 +18,8 @@
 - **🧠 Intelligent Hardware Detection**: Automatically selects best models for GPU/CPU
 - **🛰️ Multi-spectral Support**: Native 5+ band UAV/satellite imagery with NDVI calculation
 - **🎯 Multiple Modes**: Point-click, bounding box, batch, auto-segment, text prompts, similar objects
-- **📋 12 Pre-defined Classes**: Buildings, Roads, Vegetation, Water, Vehicle, Vessels, and more
+- **📋 Expanded Default Class Catalog**: Buildings, Roads, hardscape materials, granular vegetation classes, roof types, rooftop equipment, and more
+- **🧩 QGIS 4 / Qt6 Ready**: Recent enum and UI compatibility updates keep the plugin working on QGIS 4.0+ / Qt6
 - **🌿 Enhanced Vegetation Detection**: Spectral analysis for superior vegetation mapping
 - **🌐 Online Map Support**: Works with ESRI, Google Satellite, and XYZ/WMS/WMTS tile services
 - **↶ Undo Support**: Mistake correction with polygon-level undo
@@ -78,7 +79,7 @@ Enable in QGIS Plugin Manager or download from GitHub
 
 ### 3. Point & Click to Segment
 
-Select a class (Buildings, Water, etc.) and click on objects in your imagery. Works identically with local rasters and online tile services.
+Select a class (Buildings, Asphalt, Tree Canopy, PV, Water, etc.) and click on objects in your imagery. Works identically with local rasters and online tile services.
 
 ### 4. View Results
 
@@ -222,17 +223,29 @@ For current limitations and upcoming fixes, see:
 
 ### Minimum
 
-- QGIS 3.16+
+- QGIS 4.0+
 - Python 3.7+
 - 8GB RAM
 - 2GB disk space
 
 ### Recommended
 
-- QGIS 3.28+
+- QGIS 4.0+ (tested on 4.01)
 - NVIDIA GPU with CUDA or Apple Silicon
 - 16GB+ RAM
 - SSD storage
+
+## 🧩 Default Class Profiles
+
+GeoOSAM now ships with a broader default catalog for datasets that split broad labels into more specific subclasses.
+
+- **Hardscape / transport:** Roads, Cobblestone, Asphalt, Large/Small Pavement Stones, Pervious Pavement Stones, Gravel, Concrete, Railway, Bike lane
+- **Vegetation / land cover:** Vegetation, Field, Grass, Greenfield, Tree Canopy, Artificial Turf, Water
+- **Buildings / roofs / rooftop objects:** Buildings, Residential, Industrial, Glass roof, Green roof, Red roof, Dark roof, Industrial roof, PV, Thermo, Window, Solar tube
+
+Related classes automatically reuse the most suitable helper rules, morphology, merge settings, and batch defaults.
+
+Typical batch ranges now scale by profile: large surfaces and water stay low (~8-20 objects), vehicles and rooftop fixtures use medium counts (~30-60), and dense canopy/grass classes can use much higher counts (~40-120). The UI caps this at 120 to avoid overly heavy batch runs in a single request.
 
 ## 📦 Installation
 
@@ -391,7 +404,7 @@ wget https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.
 - **🌱 Environmental Monitoring**: Vegetation and land cover analysis with NDVI
 - **🛰️ UAV/Drone Mapping**: Multi-spectral imagery analysis and processing
 - **🚗 Transportation**: Vehicle and traffic analysis
-- **🌊 Coastal Studies**: Ship detection and water body mapping
+- **🌊 Coastal Studies**: Vessel detection and water body mapping
 - **🏗️ Construction**: Site monitoring and progress tracking
 - **📡 Remote Sensing**: Large-scale multi-spectral imagery analysis
 - **🌾 Agriculture**: Crop monitoring with spectral vegetation indices
@@ -627,7 +640,7 @@ export GEOOSAM_FORCE_CPU=1
 Please check:
 
 - Plugin version (latest preferred)
-- QGIS version (3.16+ required)
+- QGIS version (4.0+ required)
 - Dependencies installed:
 
   - `torch`
@@ -654,6 +667,6 @@ To be determined based on user feedback and usage patterns.
 
 ---
 
-**Last updated:** 2026-02-07
-**Plugin Version:** 1.3.3
-**QGIS Compatibility:** 3.16+
+**Last updated:** 2026-04-23
+**Plugin Version:** 1.3.4
+**QGIS Compatibility:** 4.0+ / Qt6-ready
