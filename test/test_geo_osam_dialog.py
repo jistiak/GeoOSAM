@@ -14,28 +14,17 @@ __copyright__ = 'Copyright 2025, Ofer Butbega'
 
 import unittest
 
-from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
+from qgis.PyQt import QtWidgets
 
-from geo_osam_dialog import SegSamDialog
+from geo_osam_dialog import SegSamDialog, _qt_enum
 
 from utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
 
-
-def _qt_enum(owner, scoped_name, legacy_name=None):
-    value = owner
-    try:
-        for part in scoped_name.split("."):
-            value = getattr(value, part)
-        return value
-    except AttributeError:
-        return getattr(owner, legacy_name or scoped_name.rsplit(".", 1)[-1])
-
-
-BUTTON_OK = _qt_enum(QDialogButtonBox, "StandardButton.Ok", "Ok")
-BUTTON_CANCEL = _qt_enum(QDialogButtonBox, "StandardButton.Cancel", "Cancel")
-DIALOG_ACCEPTED = _qt_enum(QDialog, "DialogCode.Accepted", "Accepted")
-DIALOG_REJECTED = _qt_enum(QDialog, "DialogCode.Rejected", "Rejected")
+BUTTON_OK = _qt_enum(QtWidgets.QDialogButtonBox, "StandardButton.Ok", "Ok")
+BUTTON_CANCEL = _qt_enum(QtWidgets.QDialogButtonBox, "StandardButton.Cancel", "Cancel")
+DIALOG_ACCEPTED = _qt_enum(QtWidgets.QDialog, "DialogCode.Accepted", "Accepted")
+DIALOG_REJECTED = _qt_enum(QtWidgets.QDialog, "DialogCode.Rejected", "Rejected")
 
 
 class SegSamDialogTest(unittest.TestCase):
