@@ -74,10 +74,9 @@ def ensure_sys_path(path):
     """Append a path once, using normalized comparisons for cross-platform safety."""
     normalized_path = os.path.normcase(os.path.normpath(path))
     if all(
-        os.path.normcase(
-            os.path.normpath(existing_path if existing_path is not None else os.curdir)
-        ) != normalized_path
+        os.path.normcase(os.path.normpath(existing_path)) != normalized_path
         for existing_path in sys.path
+        if existing_path is not None
     ):
         sys.path.append(path)
 
