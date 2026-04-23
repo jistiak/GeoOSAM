@@ -49,6 +49,23 @@ from qgis.core import (
 from qgis.gui import QgsRubberBand, QgsMapTool, QgsVertexMarker
 from qgis.PyQt import QtWidgets, QtCore, QtGui
 
+def _qt_enum(owner, scoped_name, legacy_name=None):
+    """Return a Qt enum value that works with both PyQt5 and PyQt6."""
+    value = owner
+    try:
+        for part in scoped_name.split("."):
+            value = getattr(value, part)
+        return value
+    except AttributeError:
+        return getattr(owner, legacy_name or scoped_name.rsplit(".", 1)[-1])
+
+
+QFRAME_SHAPE_HLINE = _qt_enum(QtWidgets.QFrame, "Shape.HLine", "HLine")
+QLINEEDIT_ECHO_PASSWORD = _qt_enum(QtWidgets.QLineEdit, "EchoMode.Password", "Password")
+QSIZEPOLICY_PREFERRED = _qt_enum(QtWidgets.QSizePolicy, "Policy.Preferred", "Preferred")
+QSIZEPOLICY_MAXIMUM = _qt_enum(QtWidgets.QSizePolicy, "Policy.Maximum", "Maximum")
+QSIZEPOLICY_MINIMUM = _qt_enum(QtWidgets.QSizePolicy, "Policy.Minimum", "Minimum")
+
 # fmt: off
 plugin_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(plugin_dir)
@@ -2647,7 +2664,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             self,
             "Hugging Face Token",
             "Enter your Hugging Face access token:",
-            QtWidgets.QLineEdit.Password
+            QLINEEDIT_ECHO_PASSWORD
         )
         if not ok or not token.strip():
             return False
@@ -3151,7 +3168,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         main_layout.addWidget(self.deviceLabel)
 
         separator = QtWidgets.QFrame()
-        separator.setFrameShape(QtWidgets.QFrame.HLine)
+        separator.setFrameShape(QFRAME_SHAPE_HLINE)
         separator.setStyleSheet("border-top: 1px solid #EAECF0;")
         main_layout.addWidget(separator)
 
@@ -3473,8 +3490,8 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             }
         """)
         self.batchSettingsFrame.setSizePolicy(
-            QtWidgets.QSizePolicy.Preferred, 
-            QtWidgets.QSizePolicy.Maximum
+            QSIZEPOLICY_PREFERRED,
+            QSIZEPOLICY_MAXIMUM
         )
 
         batch_settings_layout = QtWidgets.QVBoxLayout(self.batchSettingsFrame)
@@ -3619,8 +3636,8 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
 
         # Enable proper resizing
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
-        main_widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+        self.setSizePolicy(QSIZEPOLICY_PREFERRED, QSIZEPOLICY_PREFERRED)
+        main_widget.setSizePolicy(QSIZEPOLICY_PREFERRED, QSIZEPOLICY_MINIMUM)
 
         # Force initial layout
         self.adjustSize()
