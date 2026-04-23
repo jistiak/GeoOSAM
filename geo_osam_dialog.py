@@ -24,7 +24,7 @@ import urllib.request
 import tempfile
 import math
 from PIL import Image
-from qgis.PyQt.QtCore import QVariant, Qt, QThread, pyqtSignal
+from qgis.PyQt.QtCore import QMetaType, Qt, QThread, pyqtSignal
 from qgis.core import (
     QgsProject,
     QgsRasterLayer,
@@ -37,7 +37,6 @@ from qgis.core import (
     QgsFillSymbol,
     QgsField,
     QgsVectorFileWriter,
-    QgsMapLayerType,
     QgsDataSourceUri,
     QgsNetworkAccessManager,
     QgsRasterFileWriter,
@@ -742,17 +741,17 @@ def show_checkpoint_dialog(parent=None):
     from qgis.PyQt.QtCore import Qt
 
     msg = QMessageBox(parent)
-    msg.setIcon(QMessageBox.Question)
+    msg.setIcon(QMessageBox.Icon.Question)
     msg.setWindowTitle("SAM2 Model Download")
     msg.setText("GeoOSAM requires the SAM2 model checkpoint (~160MB).")
     msg.setInformativeText("Would you like to download it now?")
-    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-    msg.setDefaultButton(QMessageBox.Yes)
+    msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+    msg.setDefaultButton(QMessageBox.StandardButton.Yes)
 
-    if msg.exec_() == QMessageBox.Yes:
+    if msg.exec() == QMessageBox.StandardButton.Yes:
         progress = QProgressDialog(
             "Downloading SAM2 model...", "Cancel", 0, 0, parent)
-        progress.setWindowModality(Qt.WindowModal)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.show()
 
         try:
@@ -2083,11 +2082,11 @@ class EnhancedPointClickTool(QgsMapTool):
         super().__init__(canvas)
         self.canvas = canvas
         self.cb = cb
-        self.setCursor(QtCore.Qt.CrossCursor)
+        self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
 
-        self.point_rubber = QgsRubberBand(canvas, QgsWkbTypes.PointGeometry)
-        self.point_rubber.setColor(QtCore.Qt.red)
-        self.point_rubber.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.point_rubber = QgsRubberBand(canvas, Qgis.GeometryType.Point)
+        self.point_rubber.setColor(QtCore.Qt.GlobalColor.red)
+        self.point_rubber.setIcon(QgsRubberBand.IconType.ICON_CIRCLE)
         self.point_rubber.setIconSize(12)
         self.point_rubber.setWidth(4)
 
@@ -2098,19 +2097,19 @@ class EnhancedPointClickTool(QgsMapTool):
     def canvasReleaseEvent(self, e):
         map_point = self.canvas.getCoordinateTransform().toMapCoordinates(e.pos())
 
-        if e.modifiers() & QtCore.Qt.ShiftModifier:
+        if e.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier:
             # Shift+click: accumulate positive point
             self.accumulated_points.append((map_point, 1))
             self._add_marker(map_point, positive=True)
             return
-        elif e.modifiers() & QtCore.Qt.ControlModifier:
+        elif e.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
             # Ctrl+click: accumulate negative point
             self.accumulated_points.append((map_point, 0))
             self._add_marker(map_point, positive=False)
             return
 
         # Normal click: show red dot and trigger prediction
-        self.point_rubber.reset(QgsWkbTypes.PointGeometry)
+        self.point_rubber.reset(Qgis.GeometryType.Point)
         self.point_rubber.addPoint(map_point, True)
         self.canvas.refresh()
 
@@ -2129,10 +2128,10 @@ class EnhancedPointClickTool(QgsMapTool):
         """Add a +/- marker on the map"""
         marker = QgsVertexMarker(self.canvas)
         if positive:
-            marker.setIconType(QgsVertexMarker.ICON_CROSS)
+            marker.setIconType(QgsVertexMarker.IconType.ICON_CROSS)
             marker.setColor(QtGui.QColor(0, 200, 0))  # Green for positive
         else:
-            marker.setIconType(QgsVertexMarker.ICON_X)
+            marker.setIconType(QgsVertexMarker.IconType.ICON_X)
             marker.setColor(QtGui.QColor(255, 0, 0))  # Red for negative
         marker.setIconSize(14)
         marker.setPenWidth(3)
@@ -2147,13 +2146,13 @@ class EnhancedPointClickTool(QgsMapTool):
         self.point_markers = []
 
     def deactivate(self):
-        self.point_rubber.reset(QgsWkbTypes.PointGeometry)
+        self.point_rubber.reset(Qgis.GeometryType.Point)
         self._clear_markers()
         self.accumulated_points = []
         super().deactivate()
 
     def clear_feedback(self):
-        self.point_rubber.reset(QgsWkbTypes.PointGeometry)
+        self.point_rubber.reset(Qgis.GeometryType.Point)
         self._clear_markers()
         self.accumulated_points = []
         self.canvas.refresh()
@@ -2163,19 +2162,19 @@ class EnhancedBBoxClickTool(QgsMapTool):
         super().__init__(canvas)
         self.canvas = canvas
         self.cb = cb
-        self.setCursor(QtCore.Qt.CrossCursor)
+        self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
         self.start_point = None
         self.is_dragging = False
 
-        self.bbox_rubber = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
-        self.bbox_rubber.setColor(QtCore.Qt.blue)
+        self.bbox_rubber = QgsRubberBand(canvas, Qgis.GeometryType.Polygon)
+        self.bbox_rubber.setColor(QtCore.Qt.GlobalColor.blue)
         self.bbox_rubber.setFillColor(QtGui.QColor(0, 0, 255, 60))
         self.bbox_rubber.setWidth(2)
 
     def canvasPressEvent(self, e):
         self.start_point = self.canvas.getCoordinateTransform().toMapCoordinates(e.pos())
         self.is_dragging = True
-        self.bbox_rubber.reset(QgsWkbTypes.PolygonGeometry)
+        self.bbox_rubber.reset(Qgis.GeometryType.Polygon)
 
     def canvasMoveEvent(self, e):
         if self.is_dragging and self.start_point:
@@ -2195,19 +2194,19 @@ class EnhancedBBoxClickTool(QgsMapTool):
             if rect.width() > min_size and rect.height() > min_size:
                 self.cb(rect)
             else:
-                self.bbox_rubber.reset(QgsWkbTypes.PolygonGeometry)
+                self.bbox_rubber.reset(Qgis.GeometryType.Polygon)
                 self.canvas.refresh()
         self.is_dragging = False
         self.start_point = None
 
     def deactivate(self):
-        self.bbox_rubber.reset(QgsWkbTypes.PolygonGeometry)
+        self.bbox_rubber.reset(Qgis.GeometryType.Polygon)
         self.is_dragging = False
         self.start_point = None
         super().deactivate()
 
     def clear_feedback(self):
-        self.bbox_rubber.reset(QgsWkbTypes.PolygonGeometry)
+        self.bbox_rubber.reset(Qgis.GeometryType.Polygon)
         self.canvas.refresh()
 
 class Switch(QtWidgets.QAbstractButton):
@@ -2217,11 +2216,11 @@ class Switch(QtWidgets.QAbstractButton):
         self.setFixedSize(50, 28)
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         track_color = QtGui.QColor("#34D399") if self.isChecked() else QtGui.QColor("#E5E7EB")
         thumb_color = QtGui.QColor("#FFFFFF")
         painter.setBrush(track_color)
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(self.rect(), 14, 14)
         thumb_x = self.width() - 24 if self.isChecked() else 4
         thumb_rect = QtCore.QRect(thumb_x, 4, 20, 20)
@@ -2320,9 +2319,9 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         # Setup docking with version in title
         version = self._get_plugin_version()
         self.setWindowTitle(f"Version: {version}")
-        self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.setFeatures(QtWidgets.QDockWidget.DockWidgetMovable |
-                         QtWidgets.QDockWidget.DockWidgetFloatable)
+        self.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        self.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetMovable |
+                         QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
         # State variables
         self.point = None
@@ -2425,7 +2424,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                 "Cancel", 0, 100, self
             )
             progress.setWindowTitle("Model Download")
-            progress.setWindowModality(Qt.WindowModal)
+            progress.setWindowModality(Qt.WindowModality.WindowModal)
             progress.show()
 
             try:
@@ -2584,7 +2583,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
     def _show_sam3_download_dialog(self):
         """Show SAM3 download instructions"""
         msg = QtWidgets.QMessageBox(self)
-        msg.setIcon(QtWidgets.QMessageBox.Information)
+        msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msg.setWindowTitle("SAM3 Download Required")
         msg.setText("SAM3 weights not found")
         msg.setInformativeText(
@@ -2602,9 +2601,9 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             "• Install/update: pip install -U ultralytics\n\n"
             "Falling back to SAM2.1_B/SAM2..."
         )
-        download_btn = msg.addButton("Download Now", QtWidgets.QMessageBox.AcceptRole)
-        msg.addButton(QtWidgets.QMessageBox.Cancel)
-        msg.exec_()
+        download_btn = msg.addButton("Download Now", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        msg.addButton(QtWidgets.QMessageBox.StandardButton.Cancel)
+        msg.exec()
 
         if msg.clickedButton() == download_btn:
             return self._download_sam3_weights()
@@ -2662,7 +2661,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                 "Downloading SAM3 weights...", "Cancel", 0, 100, self
             )
             progress.setWindowTitle("Downloading SAM3")
-            progress.setWindowModality(Qt.WindowModal)
+            progress.setWindowModality(Qt.WindowModality.WindowModal)
             progress.show()
 
             req = urllib.request.Request(
@@ -2736,7 +2735,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                 f"<p><b>Email:</b> {license_info['email']}</p>"
                 f"<p><b>Status:</b> {license_info['status']}</p>"
             )
-            info_label.setTextFormat(Qt.RichText)
+            info_label.setTextFormat(Qt.TextFormat.RichText)
             layout.addWidget(info_label)
 
             # Add spacer
@@ -2767,7 +2766,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                 "<p><b>Purchase License:</b> Contact <b>geoosamplugin@gmail.com</b></p>"
                 "<p><i>Note: Your email is used to validate the license key</i></p>"
             )
-            info_label.setTextFormat(Qt.RichText)
+            info_label.setTextFormat(Qt.TextFormat.RichText)
             info_label.setWordWrap(True)
             layout.addWidget(info_label)
 
@@ -2800,7 +2799,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                 "✅ Similar object detection on entire raster (unlimited)<br>"
                 "✅ Automatic tile processing for large rasters"
             )
-            features_label.setTextFormat(Qt.RichText)
+            features_label.setTextFormat(Qt.TextFormat.RichText)
             features_label.setStyleSheet("background-color: #f0f0f0; padding: 10px; border-radius: 5px;")
             layout.addWidget(features_label)
 
@@ -2822,7 +2821,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
             layout.addLayout(button_layout)
 
-        dialog.exec_()
+        dialog.exec()
 
     def _activate_license(self, dialog, email, key):
         """Validate and activate entered license key"""
@@ -2895,10 +2894,10 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             "Change License",
             "Are you sure you want to change your license?\n\n"
             "Your current license will be removed.",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
         )
 
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             LicenseManager.clear_license()
             self._update_license_status()
             dialog.accept()
@@ -2917,10 +2916,10 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             "• Entire raster processing\n"
             "• You'll be limited to extent mode only\n\n"
             "You can re-activate later with the same key.",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
         )
 
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             LicenseManager.clear_license()
             self._update_license_status()
             QtWidgets.QMessageBox.information(
@@ -2942,7 +2941,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         # Show upgrade dialog with HTML support
         msg = QtWidgets.QMessageBox(self)
         msg.setWindowTitle("SAM3 Pro Feature")
-        msg.setTextFormat(Qt.RichText)
+        msg.setTextFormat(Qt.TextFormat.RichText)
         msg.setText(
             "Entire raster processing is a <b>SAM3 Pro</b> feature.<br><br>"
             "<b>✓ Free Tier:</b> Extent mode (visible area) - unlimited<br>"
@@ -2950,11 +2949,11 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             "<i>Pro licensing helps fund development of GeoOSAM</i><br><br>"
             "Would you like to activate a license?"
         )
-        msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-        msg.setIcon(QtWidgets.QMessageBox.Information)
-        reply = msg.exec_()
+        msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
+        msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
+        reply = msg.exec()
 
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             self._show_license_dialog()
             # Check again after dialog
             return LicenseManager.has_raster_access()
@@ -2992,7 +2991,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             # Show upgrade dialog with HTML support
             msg = QtWidgets.QMessageBox(self)
             msg.setWindowTitle("SAM3 Pro Feature")
-            msg.setTextFormat(Qt.RichText)
+            msg.setTextFormat(Qt.TextFormat.RichText)
             msg.setText(
                 "Entire raster processing is a <b>SAM3 Pro</b> feature.<br><br>"
                 "<b>✓ Free Tier:</b> Extent mode (visible area) - unlimited<br>"
@@ -3000,11 +2999,11 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                 "<i>Pro licensing helps fund development of GeoOSAM</i><br><br>"
                 "Would you like to activate a license?"
             )
-            msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-            msg.setIcon(QtWidgets.QMessageBox.Information)
-            reply = msg.exec_()
+            msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
+            msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
+            reply = msg.exec()
 
-            if reply == QtWidgets.QMessageBox.Yes:
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
                 self._show_license_dialog()
 
             # Revert to extent mode
@@ -3060,16 +3059,16 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
         # --- Dock features: standard QGIS close/float/move
         self.setFeatures(
-            QtWidgets.QDockWidget.DockWidgetClosable |
-            QtWidgets.QDockWidget.DockWidgetFloatable |
-            QtWidgets.QDockWidget.DockWidgetMovable
+            QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetClosable |
+            QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetFloatable |
+            QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetMovable
         )
 
         # --- Scrollable, responsive area
         scroll_area = QtWidgets.QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # Disable horizontal scroll
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)     # Only show vertical when needed
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Disable horizontal scroll
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)     # Only show vertical when needed
         scroll_area.setStyleSheet("QScrollArea { border: none; background: #f8f9fa; }")
         self.setWidget(scroll_area)
 
@@ -3139,7 +3138,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         # --- Title and Device Header ---
         title_label = QtWidgets.QLabel("GeoOSAM Control Panel")
         title_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #1D2939;")
-        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(title_label)
 
         device_icon = "🎮" if "cuda" in self.device else "🖥️"
@@ -3148,7 +3147,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             device_info += f" ({self.num_cores} cores)"
         self.deviceLabel = QtWidgets.QLabel(device_info)
         self.deviceLabel.setStyleSheet("font-size: 12px; color: #475467;")  # Reduced from 18px
-        self.deviceLabel.setAlignment(Qt.AlignCenter)
+        self.deviceLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.deviceLabel)
 
         separator = QtWidgets.QFrame()
@@ -3169,7 +3168,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             QComboBox::drop-down { border: none; }
             QComboBox:hover { border: 1px solid #1570EF; }
         """)
-        self.modelComboBox.setFocusPolicy(Qt.NoFocus)
+        self.modelComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         # Populate based on device-specific model options
         for option in self.model_options:
@@ -3222,7 +3221,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
             # Manage License button
             self.manageLicenseBtn = QtWidgets.QPushButton("Manage License")
-            self.manageLicenseBtn.setCursor(Qt.PointingHandCursor)
+            self.manageLicenseBtn.setCursor(Qt.CursorShape.PointingHandCursor)
             self.manageLicenseBtn.setStyleSheet("""
                 QPushButton {
                     font-size: 11px; padding: 6px 16px; border-radius: 8px;
@@ -3232,7 +3231,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             """)
             self.manageLicenseBtn.setAutoDefault(False)
             self.manageLicenseBtn.setDefault(False)
-            self.manageLicenseBtn.setFocusPolicy(Qt.NoFocus)
+            self.manageLicenseBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.manageLicenseBtn.clicked.connect(self._show_license_dialog)
             license_layout.addWidget(self.manageLicenseBtn)
 
@@ -3247,7 +3246,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         self.outputFolderLabel = QtWidgets.QLabel("Default folder")
         self.outputFolderLabel.setStyleSheet("font-size: 11px; color: #475467;")  # Reduced from 18px
         self.selectFolderBtn = QtWidgets.QPushButton("Choose")
-        self.selectFolderBtn.setCursor(Qt.PointingHandCursor)
+        self.selectFolderBtn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.selectFolderBtn.setStyleSheet("""
             QPushButton {
                 font-size: 11px; padding: 6px 16px; border-radius: 8px;
@@ -3257,7 +3256,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         """)  # Reduced font-size and padding
         self.selectFolderBtn.setAutoDefault(False)
         self.selectFolderBtn.setDefault(False)
-        self.selectFolderBtn.setFocusPolicy(Qt.NoFocus)
+        self.selectFolderBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         folder_layout.addWidget(self.outputFolderLabel)
         folder_layout.addStretch()
         folder_layout.addWidget(self.selectFolderBtn)
@@ -3275,7 +3274,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             QComboBox::drop-down { border: none; }
             QComboBox:hover { border: 1px solid #1570EF; }
         """)
-        self.formatComboBox.setFocusPolicy(Qt.NoFocus)
+        self.formatComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         for fmt in self.EXPORT_FORMATS:
             self.formatComboBox.addItem(fmt)
         format_layout.addWidget(format_label)
@@ -3308,7 +3307,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             }
             QComboBox::drop-down { border: none; }
         """)  # Reduced padding and font-size
-        self.classComboBox.setFocusPolicy(Qt.NoFocus)
+        self.classComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         class_layout.addWidget(self.classComboBox)
 
         # Current class label
@@ -3328,10 +3327,10 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         self.addClassBtn = QtWidgets.QPushButton("➕ Add")
         self.editClassBtn = QtWidgets.QPushButton("✏️ Edit")
         for btn in [self.addClassBtn, self.editClassBtn]:
-            btn.setCursor(Qt.PointingHandCursor)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setAutoDefault(False)
             btn.setDefault(False)
-            btn.setFocusPolicy(Qt.NoFocus)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             btn.setStyleSheet("""
                 QPushButton {
                     font-size: 11px; padding: 8px; border-radius: 8px;
@@ -3367,7 +3366,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                 border: 2px solid #1570EF;
             }
         """)
-        self.textPromptInput.setFocusPolicy(Qt.StrongFocus)
+        self.textPromptInput.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         text_prompt_layout.addWidget(self.textPromptInput)
 
         # Scope selector (AOI vs Full Raster)
@@ -3385,7 +3384,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             }
             QComboBox:hover { border-color: #1570EF; }
         """)
-        self.scopeComboBox.setFocusPolicy(Qt.NoFocus)
+        self.scopeComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.scopeComboBox.currentIndexChanged.connect(self._on_scope_changed)
         scope_layout.addWidget(scope_label)
         scope_layout.addWidget(self.scopeComboBox)
@@ -3394,7 +3393,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
         # Segment button
         self.segmentTextBtn = QtWidgets.QPushButton("🤖 Auto-Segment All Objects")
-        self.segmentTextBtn.setCursor(Qt.PointingHandCursor)
+        self.segmentTextBtn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.segmentTextBtn.setStyleSheet("""
             QPushButton {
                 font-size: 11px; font-weight: 600; padding: 10px;
@@ -3405,7 +3404,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             QPushButton:disabled { background: #D0D5DD; border: #D0D5DD; color: #667085; }
         """)
         self.segmentTextBtn.setAutoDefault(False)
-        self.segmentTextBtn.setFocusPolicy(Qt.NoFocus)
+        self.segmentTextBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         text_prompt_layout.addWidget(self.segmentTextBtn)
 
         main_layout.addWidget(self.textPromptCard)
@@ -3533,7 +3532,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         # ENHANCED: Add helpful hints label
         self.classHintsLabel = QtWidgets.QLabel("Auto-adjusts based on selected class")
         self.classHintsLabel.setStyleSheet("font-size: 9px; color: #9CA3AF; font-style: italic;")
-        self.classHintsLabel.setAlignment(Qt.AlignCenter)
+        self.classHintsLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         batch_settings_layout.addWidget(self.classHintsLabel)
 
         # Initially hidden and properly sized
@@ -3580,7 +3579,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
         self.undoBtn = QtWidgets.QPushButton("⟲ Undo Last Polygon")
         self.undoBtn.setEnabled(False)
-        self.undoBtn.setCursor(Qt.PointingHandCursor)
+        self.undoBtn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.undoBtn.setStyleSheet("""
             QPushButton {
                 font-size: 11px; font-weight: 600; padding: 10px;
@@ -3595,10 +3594,10 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
         self.undoBtn.setAutoDefault(False)
         self.undoBtn.setDefault(False)
-        self.undoBtn.setFocusPolicy(Qt.NoFocus)
+        self.undoBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self.exportBtn = QtWidgets.QPushButton("💾 Export All")
-        self.exportBtn.setCursor(Qt.PointingHandCursor)
+        self.exportBtn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.exportBtn.setStyleSheet("""
             QPushButton {
                 font-size: 11px; font-weight: 600; padding: 10px;
@@ -3610,14 +3609,14 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
         self.exportBtn.setAutoDefault(False)
         self.exportBtn.setDefault(False)
-        self.exportBtn.setFocusPolicy(Qt.NoFocus)
+        self.exportBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         status_layout.addWidget(self.undoBtn)
         status_layout.addWidget(self.exportBtn)
         main_layout.addWidget(status_card)
 
         main_layout.addStretch()
-        self.setFocusPolicy(Qt.ClickFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
 
         # Enable proper resizing
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
@@ -3922,10 +3921,10 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             f"Switch from {self.model_choice} to {new_model}?\n\n"
             "This will reload the model.\n"
             "Your existing layers and features will be preserved.",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
         )
 
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             self.model_choice = new_model
             self._reload_model()
             self._update_ui_for_model()
@@ -5247,7 +5246,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         if not hasattr(self, 'cancelTiledBtn'):
             # Create cancel button with same style as undo button
             self.cancelTiledBtn = QtWidgets.QPushButton("🛑 Cancel Processing")
-            self.cancelTiledBtn.setCursor(Qt.PointingHandCursor)
+            self.cancelTiledBtn.setCursor(Qt.CursorShape.PointingHandCursor)
             self.cancelTiledBtn.setStyleSheet("""
                 QPushButton {
                     font-size: 11px; font-weight: 600; padding: 10px;
@@ -5262,7 +5261,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             """)
             self.cancelTiledBtn.setAutoDefault(False)
             self.cancelTiledBtn.setDefault(False)
-            self.cancelTiledBtn.setFocusPolicy(Qt.NoFocus)
+            self.cancelTiledBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.cancelTiledBtn.clicked.connect(self._cancel_tiled_processing)
 
             # Find the undo button's parent layout and insert cancel button at same position
@@ -6530,16 +6529,16 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             return None
 
         layer.dataProvider().addAttributes([
-            QgsField("segment_id", QVariant.Int),
-            QgsField("class", QVariant.String),
-            QgsField("class_color", QVariant.String),
-            QgsField("method", QVariant.String),
-            QgsField("timestamp", QVariant.String),
-            QgsField("mask_file", QVariant.String),
-            QgsField("crop_size", QVariant.String),
-            QgsField("canvas_scale", QVariant.Double),
-            QgsField("source_layer", QVariant.String),  # Track source raster
-            QgsField("layer_crs", QVariant.String)      # Track CRS used
+            QgsField("segment_id", QMetaType.Type.Int),
+            QgsField("class", QMetaType.Type.QString),
+            QgsField("class_color", QMetaType.Type.QString),
+            QgsField("method", QMetaType.Type.QString),
+            QgsField("timestamp", QMetaType.Type.QString),
+            QgsField("mask_file", QMetaType.Type.QString),
+            QgsField("crop_size", QMetaType.Type.QString),
+            QgsField("canvas_scale", QMetaType.Type.Double),
+            QgsField("source_layer", QMetaType.Type.QString),  # Track source raster
+            QgsField("layer_crs", QMetaType.Type.QString)      # Track CRS used
         ])
         layer.updateFields()
 
@@ -6648,14 +6647,18 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             export_name = f"SAM_{class_name}_{timestamp}{fmt['ext']}"
             export_path = str(self.export_save_dir / export_name)
 
-            error = QgsVectorFileWriter.writeAsVectorFormat(
-                layer, export_path, "utf-8", layer.crs(), fmt['driver'])
+            options = QgsVectorFileWriter.SaveVectorOptions()
+            options.driverName = fmt['driver']
+            options.fileEncoding = "utf-8"
+            transform_context = QgsProject.instance().transformContext()
+            error, error_msg = QgsVectorFileWriter.writeAsVectorFormatV3(
+                layer, export_path, transform_context, options)
 
-            if error[0] == QgsVectorFileWriter.NoError:
+            if error == QgsVectorFileWriter.WriterError.NoError:
                 print(f"💾 Exported {class_name}: {export_path}")
                 return True
             else:
-                print(f"❌ Export failed for {class_name}: {error}")
+                print(f"❌ Export failed for {class_name}: {error_msg}")
                 return False
 
         except Exception as e:
@@ -6744,9 +6747,9 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             self.progressBar.setVisible(not enabled)
 
         if not enabled:
-            self.setCursor(Qt.WaitCursor)
+            self.setCursor(Qt.CursorShape.WaitCursor)
         else:
-            self.setCursor(Qt.ArrowCursor)
+            self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def _update_status(self, message, status_type="info"):
         color_styles = {
@@ -6822,7 +6825,7 @@ class SegSamDialog(QtWidgets.QDialog):
         if not self.control_panel:
             self.control_panel = GeoOSAMControlPanel(self.iface)
             self.iface.addDockWidget(
-                Qt.RightDockWidgetArea, self.control_panel)
+                Qt.DockWidgetArea.RightDockWidgetArea, self.control_panel)
         self.control_panel.show()
         self.control_panel.raise_()
         self.close()

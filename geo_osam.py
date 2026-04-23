@@ -148,7 +148,7 @@ class SegSam:
             self.control_panel = GeoOSAMControlPanel(self.iface)
             # Dock it to the right side
             self.iface.addDockWidget(
-                Qt.RightDockWidgetArea, self.control_panel)
+                Qt.DockWidgetArea.RightDockWidgetArea, self.control_panel)
 
             # Connect to closed signal to clean up reference
             self.control_panel.destroyed.connect(self._on_panel_destroyed)
