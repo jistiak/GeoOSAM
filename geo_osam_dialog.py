@@ -6650,6 +6650,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.driverName = fmt['driver']
             options.fileEncoding = "utf-8"
+            options.ct = QgsCoordinateTransform(layer.crs(), layer.crs(), QgsProject.instance())
             transform_context = QgsProject.instance().transformContext()
             error, error_msg = QgsVectorFileWriter.writeAsVectorFormatV3(
                 layer, export_path, transform_context, options)
