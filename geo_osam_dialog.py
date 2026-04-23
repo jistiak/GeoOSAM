@@ -2446,6 +2446,40 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         'FlatGeobuf (.fgb)': {'driver': 'FlatGeobuf', 'ext': '.fgb'},
     }
 
+    @classmethod
+    def _tooltip_range(cls, class_names, setting_key, suffix=""):
+        values = [
+            cls.DEFAULT_CLASSES[name]['batch_defaults'][setting_key]
+            for name in class_names
+            if name in cls.DEFAULT_CLASSES
+        ]
+        if not values:
+            return "n/a"
+        low = min(values)
+        high = max(values)
+        return f"~{low}{suffix}" if low == high else f"~{low}-{high}{suffix}"
+
+    @classmethod
+    def _build_min_size_tooltip(cls):
+        return (
+            "Minimum object size in pixels\n"
+            f"• Roof fixtures/windows: {cls._tooltip_range(['PV', 'Thermo', 'Window', 'Solar tube'], 'min_size', 'px')}\n"
+            f"• Vehicles/vessels: {cls._tooltip_range(['Vehicle', 'Vessels'], 'min_size', 'px')}\n"
+            f"• Buildings/roofs: {cls._tooltip_range(['Buildings', 'Residential', 'Industrial', 'Glass roof', 'Green roof', 'Red roof', 'Dark roof', 'Industrial roof'], 'min_size', 'px')}\n"
+            f"• Tree canopy/grass: {cls._tooltip_range(['Vegetation', 'Grass', 'Greenfield', 'Tree Canopy', 'Artificial Turf'], 'min_size', 'px')}"
+        )
+
+    @classmethod
+    def _build_max_objects_tooltip(cls):
+        return (
+            "Maximum objects to detect\n"
+            f"• Roof fixtures/windows: {cls._tooltip_range(['PV', 'Thermo', 'Window', 'Solar tube'], 'max_objects')}\n"
+            f"• Vehicles/vessels: {cls._tooltip_range(['Vehicle', 'Vessels'], 'max_objects')}\n"
+            f"• Tree canopy/grass: {cls._tooltip_range(['Vegetation', 'Grass', 'Greenfield', 'Tree Canopy', 'Artificial Turf'], 'max_objects')}\n"
+            f"• Large surfaces/water: {cls._tooltip_range(['Water', 'Agriculture', 'Field', 'Concrete', 'Asphalt'], 'max_objects')}\n"
+            "• UI cap stays at 120 to keep dense batch runs responsive"
+        )
+
     def __init__(self, iface, parent=None):
         super().__init__("", parent)
         self.iface = iface
@@ -2502,7 +2536,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         # Batch mode settings
         self.batch_mode_enabled = False
         self.min_object_size = 50  # Minimum pixels for valid object
-        self.max_objects = 20  # Prevent too many small objects
+        self.max_objects = 25  # Generic default; class profiles can tune this up or down
         self.duplicate_threshold = 0.85  # Spatial overlap threshold for duplicates (very lenient for shape-based detection)
 
         self._setup_ui()
@@ -3638,7 +3672,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             }
         """)
         # ENHANCED: Add helpful tooltip with class recommendations
-        self.minSizeSpinBox.setToolTip("Minimum object size in pixels\n• Roof fixtures/windows: ~20-30px\n• Vehicles: ~15-25px\n• Buildings/roofs: ~60-180px\n• Tree canopy/grass: ~60-100px")
+        self.minSizeSpinBox.setToolTip(self._build_min_size_tooltip())
         size_layout.addWidget(size_label)
         size_layout.addWidget(self.minSizeSpinBox)
         size_layout.addStretch()
@@ -3651,7 +3685,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         max_label.setFixedWidth(50)  # Fixed width
         self.maxObjectsSpinBox = QtWidgets.QSpinBox()
         self.maxObjectsSpinBox.setRange(1, 120)
-        self.maxObjectsSpinBox.setValue(20)
+        self.maxObjectsSpinBox.setValue(25)
         self.maxObjectsSpinBox.setFixedWidth(50)  # Fixed width
         self.maxObjectsSpinBox.setStyleSheet("""
             QSpinBox { 
@@ -3660,7 +3694,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             }
         """)
         # ENHANCED: Add helpful tooltip with class recommendations
-        self.maxObjectsSpinBox.setToolTip("Maximum objects to detect\n• Small rooftop objects/windows: ~30-60\n• Vehicles: ~40-50\n• Tree canopy/grass: ~40-100\n• Large surfaces/water: ~8-20")
+        self.maxObjectsSpinBox.setToolTip(self._build_max_objects_tooltip())
         max_layout.addWidget(max_label)
         max_layout.addWidget(self.maxObjectsSpinBox)
         max_layout.addStretch()
@@ -3822,7 +3856,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
     def _reset_batch_defaults(self):
         """Reset to generic batch defaults when no class is selected"""
         default_min_size = 50
-        default_max_objects = 20
+        default_max_objects = 25
 
         self.minSizeSpinBox.setValue(default_min_size)
         self.maxObjectsSpinBox.setValue(default_max_objects)
@@ -3923,7 +3957,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             self.classes[class_name] = {
                 'color': color, 
                 'description': description,
-                'batch_defaults': {'min_size': 50, 'max_objects': 20}  # Generic defaults
+                'batch_defaults': {'min_size': 50, 'max_objects': 25}  # Generic defaults
             }
 
             self.classComboBox.addItem(class_name, class_name)

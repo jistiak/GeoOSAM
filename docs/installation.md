@@ -4,7 +4,7 @@
 
 ### Step 1: Install from QGIS Plugin Repository
 
-1. **Open QGIS** (version 3.16 or later)
+1. **Open QGIS** (version 4.0 or later)
 2. **Menu:** Plugins → Manage and Install Plugins
 3. **Search:** Type "GeoOSAM"
 4. **Install:** Click "Install Plugin"
@@ -140,7 +140,7 @@ Weights are saved to `~/.ultralytics/weights/sam3.pt`.
 #### Minimum Requirements
 
 - **Operating System:** Windows 10, macOS 10.14, Ubuntu 18.04
-- **QGIS Version:** 3.16 or later
+- **QGIS Version:** 4.0 or later
 - **Python:** 3.7 or later
 - **RAM:** 8GB minimum
 - **Storage:** 2GB free space
@@ -149,8 +149,9 @@ Weights are saved to `~/.ultralytics/weights/sam3.pt`.
 #### Recommended Requirements
 
 - **Operating System:** Windows 11, macOS 12+, Ubuntu 20.04+
-- **QGIS Version:** 3.28 or later
+- **QGIS Version:** 4.0 or later (tested on 4.01)
 - **Python:** 3.9 or later
+- **Qt:** Qt6 (via QGIS 4)
 - **RAM:** 16GB or more
 - **GPU:** NVIDIA GPU with CUDA or Apple Silicon (auto-detected)
 - **CPU:** 16+ cores for optimal CPU performance (<1s segmentation)

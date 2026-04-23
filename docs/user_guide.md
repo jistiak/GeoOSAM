@@ -82,7 +82,7 @@ GeoOSAM includes an expanded default catalog with broad base classes and more gr
 | Profile | Included Default Classes | Typical Use |
 | ------- | ------------------------ | ----------- |
 | **Buildings / roofs** | Buildings, Residential, Industrial, Glass roof, Green roof, Red roof, Dark roof, Industrial roof | Structures and roof footprints |
-| **Rooftop fixtures** | PV, Thermo, Window, Solar tube | Small roof-mounted objects |
+| **Rooftop fixtures** | PV, Thermo, Window, Solar tube | Small roof-mounted objects (shares building-style helper logic) |
 | **Hardscape / transport** | Roads, Railway, Bike lane, Asphalt, Cobblestone, Large/Small Pavement Stones, Pavement stones pervious, Gravel, Concrete | Streets, paved areas, and transport corridors |
 | **Vegetation / land cover** | Vegetation, Agriculture, Field, Grass, Greenfield, Tree Canopy, Artificial Turf, Water | Natural cover and broad surface classes |
 | **Other object classes** | Vehicle, Vessels, Parking, Commercial, Other, Bare ground or stone | Mixed urban and uncategorized features |
