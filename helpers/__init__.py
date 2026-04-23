@@ -16,23 +16,74 @@ from .road_helper import RoadHelper
 from .general_helper import GeneralHelper
 from .vessels_helper import VesselsHelper
 
+CLASS_FAMILIES = {
+    'vegetation': {
+        'vegetation', 'grass', 'greenfield', 'tree canopy', 'artificial turf'
+    },
+    'building': {
+        'buildings', 'building', 'industrial', 'glass roof',
+        'green roof', 'red roof', 'dark roof', 'industrial roof', 'pv',
+        'thermo', 'window', 'solar tube'
+    },
+    'residential': {
+        'residential'
+    },
+    'vehicle': {
+        'vehicle', 'cars'
+    },
+    'vessel': {
+        'vessels', 'vessel', 'ship', 'ships', 'boat', 'boats'
+    },
+    'water': {
+        'water'
+    },
+    'agriculture': {
+        'agriculture', 'field'
+    },
+    'road': {
+        'road', 'roads', 'railway', 'bike lane'
+    },
+}
+
+
+def normalize_class_name(class_name):
+    """Normalize class names for alias matching."""
+    return " ".join((class_name or "").strip().casefold().split())
+
+
+def get_class_family(class_name):
+    """Return the helper family for a class name."""
+    normalized = normalize_class_name(class_name)
+    for family, class_names in CLASS_FAMILIES.items():
+        if normalized in class_names:
+            return family
+    return 'general'
+
+
+def class_uses_helper(class_name, *families):
+    """Check whether a class belongs to one of the requested helper families."""
+    return get_class_family(class_name) in families
+
+
 def create_detection_helper(class_name, min_object_size=50, max_objects=25):
     """Factory to create appropriate helper for each class"""
-    if class_name == 'Vegetation':
+    family = get_class_family(class_name)
+
+    if family == 'vegetation':
         return VegetationHelper(class_name, min_object_size, max_objects)
-    elif class_name in ['Buildings', 'Industrial']:
+    elif family == 'building':
         return BuildingsHelper(class_name, min_object_size, max_objects)
-    elif class_name == 'Residential':
+    elif family == 'residential':
         return ResidentialHelper(class_name, min_object_size, max_objects)
-    elif class_name in ['Vehicle', 'Cars']:
+    elif family == 'vehicle':
         return VehicleHelper(class_name, min_object_size, max_objects)
-    elif class_name == 'Vessels':
+    elif family == 'vessel':
         return VesselsHelper(class_name, min_object_size, max_objects)
-    elif class_name == 'Water':
+    elif family == 'water':
         return WaterHelper(class_name, min_object_size, max_objects)
-    elif class_name == 'Agriculture':
+    elif family == 'agriculture':
         return AgricultureHelper(class_name, min_object_size, max_objects)
-    elif class_name in ['Road', 'Roads']:
+    elif family == 'road':
         return RoadHelper(class_name, min_object_size, max_objects)
     else:
         # Default helper for other classes - use general helper as fallback
@@ -49,5 +100,9 @@ __all__ = [
     'RoadHelper',
     'GeneralHelper',
     'VesselsHelper',
+    'CLASS_FAMILIES',
+    'normalize_class_name',
+    'get_class_family',
+    'class_uses_helper',
     'create_detection_helper'
 ]

@@ -18,7 +18,7 @@
 - **🧠 Intelligent Hardware Detection**: Automatically selects best models for GPU/CPU
 - **🛰️ Multi-spectral Support**: Native 5+ band UAV/satellite imagery with NDVI calculation
 - **🎯 Multiple Modes**: Point-click, bounding box, batch, auto-segment, text prompts, similar objects
-- **📋 12 Pre-defined Classes**: Buildings, Roads, Vegetation, Water, Vehicle, Vessels, and more
+- **📋 Expanded Default Class Catalog**: Buildings, Roads, hardscape materials, granular vegetation classes, roof types, rooftop equipment, and more
 - **🌿 Enhanced Vegetation Detection**: Spectral analysis for superior vegetation mapping
 - **🌐 Online Map Support**: Works with ESRI, Google Satellite, and XYZ/WMS/WMTS tile services
 - **↶ Undo Support**: Mistake correction with polygon-level undo
@@ -78,7 +78,7 @@ Enable in QGIS Plugin Manager or download from GitHub
 
 ### 3. Point & Click to Segment
 
-Select a class (Buildings, Water, etc.) and click on objects in your imagery. Works identically with local rasters and online tile services.
+Select a class (Buildings, Asphalt, Tree Canopy, PV, Water, etc.) and click on objects in your imagery. Works identically with local rasters and online tile services.
 
 ### 4. View Results
 
@@ -233,6 +233,16 @@ For current limitations and upcoming fixes, see:
 - NVIDIA GPU with CUDA or Apple Silicon
 - 16GB+ RAM
 - SSD storage
+
+## 🧩 Default Class Profiles
+
+GeoOSAM now ships with a broader default catalog for datasets that split broad labels into more specific subclasses.
+
+- **Hardscape / transport:** Roads, Cobblestone, Asphalt, Large/Small Pavement Stones, Pervious Pavement Stones, Gravel, Concrete, Railway, Bike lane
+- **Vegetation / land cover:** Vegetation, Field, Grass, Greenfield, Tree Canopy, Artificial Turf, Water
+- **Buildings / roofs / rooftop objects:** Buildings, Residential, Industrial, Glass roof, Green roof, Red roof, Dark roof, Industrial roof, PV, Thermo, Window, Solar tube
+
+Related classes automatically reuse the most suitable helper rules, morphology, merge settings, and batch defaults.
 
 ## 📦 Installation
 
@@ -391,7 +401,7 @@ wget https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.
 - **🌱 Environmental Monitoring**: Vegetation and land cover analysis with NDVI
 - **🛰️ UAV/Drone Mapping**: Multi-spectral imagery analysis and processing
 - **🚗 Transportation**: Vehicle and traffic analysis
-- **🌊 Coastal Studies**: Ship detection and water body mapping
+- **🌊 Coastal Studies**: Vessel detection and water body mapping
 - **🏗️ Construction**: Site monitoring and progress tracking
 - **📡 Remote Sensing**: Large-scale multi-spectral imagery analysis
 - **🌾 Agriculture**: Crop monitoring with spectral vegetation indices

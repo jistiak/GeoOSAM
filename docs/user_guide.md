@@ -77,22 +77,17 @@ GeoOSAM automatically detects your hardware and optimizes accordingly:
 
 #### 📋 **Pre-defined Classes**
 
-GeoOSAM includes 12 ready-to-use classes optimized for various use cases:
+GeoOSAM includes an expanded default catalog with broad base classes and more granular subclasses:
 
-| Class           | Color      | Best For                            | Optimal Mode |
-| --------------- | ---------- | ----------------------------------- | ------------ |
-| **Buildings**   | Red        | Residential & commercial structures | Point        |
-| **Roads**       | Gray       | Streets, highways, pathways         | BBox         |
-| **Vegetation**  | Green      | Trees, grass, parks (NDVI-enhanced) | BBox         |
-| **Water**       | Blue       | Rivers, lakes, ponds                | BBox         |
-| **Agriculture** | Gold       | Farmland, crops                     | BBox         |
-| **Vehicle**     | Red-Orange | Cars, trucks, buses                 | Point        |
-| **Ship**        | Cyan       | Boats, vessels                      | Point        |
-| **Parking**     | Orange     | Parking lots, areas                 | BBox         |
-| **Industrial**  | Purple     | Factories, warehouses               | Point/BBox   |
-| **Residential** | Pink       | Housing areas                       | BBox         |
-| **Commercial**  | Light Blue | Shopping, business districts        | BBox         |
-| **Other**       | Purple     | Unclassified objects                | Point        |
+| Profile | Included Default Classes | Typical Use |
+| ------- | ------------------------ | ----------- |
+| **Buildings / roofs** | Buildings, Residential, Industrial, Glass roof, Green roof, Red roof, Dark roof, Industrial roof | Structures and roof footprints |
+| **Rooftop fixtures** | PV, Thermo, Window, Solar tube | Small roof-mounted objects |
+| **Hardscape / transport** | Roads, Railway, Bike lane, Asphalt, Cobblestone, Large/Small Pavement Stones, Pavement stones pervious, Gravel, Concrete | Streets, paved areas, and transport corridors |
+| **Vegetation / land cover** | Vegetation, Agriculture, Field, Grass, Greenfield, Tree Canopy, Artificial Turf, Water | Natural cover and broad surface classes |
+| **Other object classes** | Vehicle, Vessels, Parking, Commercial, Other, Bare ground or stone | Mixed urban and uncategorized features |
+
+Related subclasses automatically inherit the closest helper logic and tuned batch defaults, so you can work with more detailed labels without rebuilding the workflow.
 
 #### ➕ **Adding Custom Classes**
 
@@ -416,7 +411,7 @@ For **5+ band imagery**, vegetation detection uses:
 
 1. **Setup:** High-resolution imagery of transportation hubs
 2. **Vehicles:** "Vehicle" class with Point mode for individual vehicles
-3. **Ships:** "Ship" class for maritime facilities
+3. **Ships:** "Vessels" class for maritime facilities
 4. **Infrastructure:** "Parking" class for facility analysis
 5. **Traffic Analysis:** Export with timestamps for temporal analysis
 
