@@ -72,6 +72,9 @@ plugin_dir = os.path.dirname(os.path.abspath(__file__))
 
 def ensure_sys_path(path):
     """Append a path once, using normalized comparisons for cross-platform safety."""
+    if path in sys.path:
+        return
+
     normalized_path = os.path.normcase(os.path.normpath(path))
     if all(
         os.path.normcase(os.path.normpath(existing_path)) != normalized_path
@@ -81,11 +84,11 @@ def ensure_sys_path(path):
         sys.path.append(path)
 
 
-try:
+if __package__:
     from .helpers import create_detection_helper, class_uses_helper
     from .sam2.build_sam import build_sam2
     from .sam2.sam2_image_predictor import SAM2ImagePredictor
-except ImportError:
+else:
     ensure_sys_path(plugin_dir)
     from helpers import create_detection_helper, class_uses_helper
     from sam2.build_sam import build_sam2
