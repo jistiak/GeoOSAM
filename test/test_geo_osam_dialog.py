@@ -16,15 +16,15 @@ import unittest
 
 from qgis.PyQt import QtWidgets
 
-from geo_osam_dialog import SegSamDialog, _qt_enum
+from geo_osam_dialog import SegSamDialog, qt_enum
 
 from utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
 
-BUTTON_OK = _qt_enum(QtWidgets.QDialogButtonBox, "StandardButton.Ok", "Ok")
-BUTTON_CANCEL = _qt_enum(QtWidgets.QDialogButtonBox, "StandardButton.Cancel", "Cancel")
-DIALOG_ACCEPTED = _qt_enum(QtWidgets.QDialog, "DialogCode.Accepted", "Accepted")
-DIALOG_REJECTED = _qt_enum(QtWidgets.QDialog, "DialogCode.Rejected", "Rejected")
+BUTTON_OK = qt_enum(QtWidgets.QDialogButtonBox, "StandardButton.Ok", "Ok")
+BUTTON_CANCEL = qt_enum(QtWidgets.QDialogButtonBox, "StandardButton.Cancel", "Cancel")
+DIALOG_ACCEPTED = qt_enum(QtWidgets.QDialog, "DialogCode.Accepted", "Accepted")
+DIALOG_REJECTED = qt_enum(QtWidgets.QDialog, "DialogCode.Rejected", "Rejected")
 
 
 class SegSamDialogTest(unittest.TestCase):

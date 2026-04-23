@@ -49,7 +49,7 @@ from qgis.core import (
 from qgis.gui import QgsRubberBand, QgsMapTool, QgsVertexMarker
 from qgis.PyQt import QtWidgets, QtCore, QtGui
 
-def _qt_enum(owner, scoped_name, legacy_name=None):
+def qt_enum(owner, scoped_name, legacy_name=None):
     """Return a Qt enum value that works with both PyQt5 and PyQt6."""
     value = owner
     try:
@@ -60,11 +60,11 @@ def _qt_enum(owner, scoped_name, legacy_name=None):
         return getattr(owner, legacy_name or scoped_name.rsplit(".", 1)[-1])
 
 
-QFRAME_SHAPE_HLINE = _qt_enum(QtWidgets.QFrame, "Shape.HLine", "HLine")
-QLINEEDIT_ECHO_PASSWORD = _qt_enum(QtWidgets.QLineEdit, "EchoMode.Password", "Password")
-QSIZEPOLICY_PREFERRED = _qt_enum(QtWidgets.QSizePolicy, "Policy.Preferred", "Preferred")
-QSIZEPOLICY_MAXIMUM = _qt_enum(QtWidgets.QSizePolicy, "Policy.Maximum", "Maximum")
-QSIZEPOLICY_MINIMUM = _qt_enum(QtWidgets.QSizePolicy, "Policy.Minimum", "Minimum")
+QFRAME_SHAPE_HLINE = qt_enum(QtWidgets.QFrame, "Shape.HLine", "HLine")
+QLINEEDIT_ECHO_PASSWORD = qt_enum(QtWidgets.QLineEdit, "EchoMode.Password", "Password")
+QSIZEPOLICY_PREFERRED = qt_enum(QtWidgets.QSizePolicy, "Policy.Preferred", "Preferred")
+QSIZEPOLICY_MAXIMUM = qt_enum(QtWidgets.QSizePolicy, "Policy.Maximum", "Maximum")
+QSIZEPOLICY_MINIMUM = qt_enum(QtWidgets.QSizePolicy, "Policy.Minimum", "Minimum")
 
 # fmt: off
 plugin_dir = os.path.dirname(os.path.abspath(__file__))
