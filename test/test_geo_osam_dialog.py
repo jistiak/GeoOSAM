@@ -14,12 +14,17 @@ __copyright__ = 'Copyright 2025, Ofer Butbega'
 
 import unittest
 
-from qgis.PyQt.QtGui import QDialogButtonBox, QDialog
+from qgis.PyQt import QtWidgets
 
-from geo_osam_dialog import SegSamDialog
+from geo_osam_dialog import SegSamDialog, qt_enum
 
 from utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
+
+BUTTON_OK = qt_enum(QtWidgets.QDialogButtonBox, "StandardButton.Ok", "Ok")
+BUTTON_CANCEL = qt_enum(QtWidgets.QDialogButtonBox, "StandardButton.Cancel", "Cancel")
+DIALOG_ACCEPTED = qt_enum(QtWidgets.QDialog, "DialogCode.Accepted", "Accepted")
+DIALOG_REJECTED = qt_enum(QtWidgets.QDialog, "DialogCode.Rejected", "Rejected")
 
 
 class SegSamDialogTest(unittest.TestCase):
@@ -36,17 +41,17 @@ class SegSamDialogTest(unittest.TestCase):
     def test_dialog_ok(self):
         """Test we can click OK."""
 
-        button = self.dialog.button_box.button(QDialogButtonBox.Ok)
+        button = self.dialog.button_box.button(BUTTON_OK)
         button.click()
         result = self.dialog.result()
-        self.assertEqual(result, QDialog.Accepted)
+        self.assertEqual(result, DIALOG_ACCEPTED)
 
     def test_dialog_cancel(self):
         """Test we can click cancel."""
-        button = self.dialog.button_box.button(QDialogButtonBox.Cancel)
+        button = self.dialog.button_box.button(BUTTON_CANCEL)
         button.click()
         result = self.dialog.result()
-        self.assertEqual(result, QDialog.Rejected)
+        self.assertEqual(result, DIALOG_REJECTED)
 
 
 if __name__ == "__main__":
