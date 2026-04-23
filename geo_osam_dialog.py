@@ -68,13 +68,24 @@ QSIZEPOLICY_MINIMUM = qt_enum(QtWidgets.QSizePolicy, "Policy.Minimum", "Minimum"
 
 # fmt: off
 plugin_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+def ensure_sys_path(path):
+    """Append a path once, using normalized comparisons for cross-platform safety."""
+    normalized_path = os.path.normcase(os.path.normpath(path))
+    if all(
+        os.path.normcase(os.path.normpath(existing_path or os.curdir)) != normalized_path
+        for existing_path in sys.path
+    ):
+        sys.path.append(path)
+
+
 try:
     from .helpers import create_detection_helper, class_uses_helper
     from .sam2.build_sam import build_sam2
     from .sam2.sam2_image_predictor import SAM2ImagePredictor
 except ImportError:
-    if plugin_dir not in sys.path:
-        sys.path.append(plugin_dir)
+    ensure_sys_path(plugin_dir)
     from helpers import create_detection_helper, class_uses_helper
     from sam2.build_sam import build_sam2
     from sam2.sam2_image_predictor import SAM2ImagePredictor
