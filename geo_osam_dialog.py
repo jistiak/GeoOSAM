@@ -68,10 +68,31 @@ QSIZEPOLICY_MINIMUM = qt_enum(QtWidgets.QSizePolicy, "Policy.Minimum", "Minimum"
 
 # fmt: off
 plugin_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(plugin_dir)
-from helpers import create_detection_helper, class_uses_helper
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+
+def ensure_sys_path(path):
+    """Append a path once, using normalized comparisons for cross-platform safety."""
+    if path in sys.path:
+        return
+
+    normalized_path = os.path.normcase(os.path.normpath(path))
+    if all(
+        os.path.normcase(os.path.normpath(existing_path)) != normalized_path
+        for existing_path in sys.path
+        if existing_path is not None
+    ):
+        sys.path.append(path)
+
+
+if __package__:
+    from .helpers import create_detection_helper, class_uses_helper
+    from .sam2.build_sam import build_sam2
+    from .sam2.sam2_image_predictor import SAM2ImagePredictor
+else:
+    ensure_sys_path(plugin_dir)
+    from helpers import create_detection_helper, class_uses_helper
+    from sam2.build_sam import build_sam2
+    from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 # Ultralytics SAM2.1 setup
 SAM21_AVAILABLE = False
