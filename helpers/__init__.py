@@ -16,68 +16,20 @@ from .road_helper import RoadHelper
 from .general_helper import GeneralHelper
 from .vessels_helper import VesselsHelper
 
-# Normalized, case-folded alias sets used by normalize_class_name()/get_class_family().
-# Keep entries lowercase here so dataset labels like "PV", "Thermo", or "Tree Canopy"
-# can map cleanly regardless of UI capitalization.
-CLASS_FAMILIES = {
-    'vegetation': {
-        'vegetation', 'grass', 'greenfield', 'tree canopy', 'artificial turf'
-    },
-    'building': {
-        # Roof surfaces and rooftop fixtures intentionally reuse building logic
-        # because they are usually compact, roof-bound, and benefit from the
-        # same morphology / duplicate handling as building-like objects.
-        'buildings', 'building', 'industrial', 'glass roof',
-        'green roof', 'red roof', 'dark roof', 'industrial roof', 'pv',
-        'thermo', 'window', 'solar tube'
-    },
-    'residential': {
-        'residential'
-    },
-    'vehicle': {
-        'vehicle', 'cars'
-    },
-    'vessel': {
-        'vessels', 'vessel', 'ship', 'ships', 'boat', 'boats'
-    },
-    'water': {
-        'water'
-    },
-    'agriculture': {
-        'agriculture', 'field'
-    },
-    'road': {
-        'road', 'roads', 'railway', 'bike lane'
-    },
-}
-
-
-def normalize_class_name(class_name):
-    """Normalize class names for alias matching.
-
-    Converts None/empty values to an empty string, case-folds to lowercase,
-    trims outer whitespace, and collapses repeated internal whitespace.
-    """
-    return " ".join((class_name or "").strip().casefold().split())
-
-
-def get_class_family(class_name):
-    """Return the helper family for a class name.
-
-    A helper family is the shared detection profile used to pick the most
-    suitable helper implementation for related classes. Returns ``general``
-    when no explicit family alias matches.
-    """
-    normalized = normalize_class_name(class_name)
-    for family, class_names in CLASS_FAMILIES.items():
-        if normalized in class_names:
-            return family
-    return 'general'
-
-
-def class_uses_helper(class_name, *families):
-    """Check whether a class belongs to one of the requested helper families."""
-    return get_class_family(class_name) in families
+try:
+    from ..class_matching import (
+        CLASS_FAMILIES,
+        class_uses_helper,
+        get_class_family,
+        normalize_class_name,
+    )
+except ImportError:
+    from class_matching import (
+        CLASS_FAMILIES,
+        class_uses_helper,
+        get_class_family,
+        normalize_class_name,
+    )
 
 
 def create_detection_helper(class_name, min_object_size=50, max_objects=25):

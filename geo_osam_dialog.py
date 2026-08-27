@@ -65,6 +65,15 @@ QLINEEDIT_ECHO_PASSWORD = qt_enum(QtWidgets.QLineEdit, "EchoMode.Password", "Pas
 QSIZEPOLICY_PREFERRED = qt_enum(QtWidgets.QSizePolicy, "Policy.Preferred", "Preferred")
 QSIZEPOLICY_MAXIMUM = qt_enum(QtWidgets.QSizePolicy, "Policy.Maximum", "Maximum")
 QSIZEPOLICY_MINIMUM = qt_enum(QtWidgets.QSizePolicy, "Policy.Minimum", "Minimum")
+QABSTRACTITEMVIEW_NO_EDIT_TRIGGERS = qt_enum(
+    QtWidgets.QAbstractItemView, "EditTrigger.NoEditTriggers", "NoEditTriggers")
+QABSTRACTITEMVIEW_SELECT_ROWS = qt_enum(
+    QtWidgets.QAbstractItemView, "SelectionBehavior.SelectRows", "SelectRows")
+QABSTRACTITEMVIEW_SINGLE_SELECTION = qt_enum(
+    QtWidgets.QAbstractItemView, "SelectionMode.SingleSelection", "SingleSelection")
+QHEADERVIEW_STRETCH = qt_enum(
+    QtWidgets.QHeaderView, "ResizeMode.Stretch", "Stretch")
+QT_USER_ROLE = qt_enum(Qt, "ItemDataRole.UserRole", "UserRole")
 
 # fmt: off
 plugin_dir = os.path.dirname(os.path.abspath(__file__))
@@ -85,12 +94,17 @@ def ensure_sys_path(path):
 
 
 if __package__:
-    from .helpers import create_detection_helper, class_uses_helper
+    from .helpers import create_detection_helper, class_uses_helper, normalize_class_name
+    from .class_catalog import (
+        build_class_catalog, order_class_names, parse_class_list_text)
+    from .qgis_compat import unpack_vector_writer_result
     from .sam2.build_sam import build_sam2
     from .sam2.sam2_image_predictor import SAM2ImagePredictor
 else:
     ensure_sys_path(plugin_dir)
-    from helpers import create_detection_helper, class_uses_helper
+    from helpers import create_detection_helper, class_uses_helper, normalize_class_name
+    from class_catalog import build_class_catalog, order_class_names, parse_class_list_text
+    from qgis_compat import unpack_vector_writer_result
     from sam2.build_sam import build_sam2
     from sam2.sam2_image_predictor import SAM2ImagePredictor
 
@@ -2524,7 +2538,11 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         self.result_layers = {}
         self.segment_counts = {}
         self.current_class = None
-        self.classes = self.DEFAULT_CLASSES.copy()
+        self.classes = build_class_catalog(
+            list(self.DEFAULT_CLASSES.keys()), self.DEFAULT_CLASSES, self.EXTRA_COLORS)
+        self.class_source_order = list(self.classes.keys())
+        self.quick_class_sort_mode = 'source'
+        self.quick_class_expanded = False
         self.worker = None
         self.original_raster_layer = None
         self.keep_raster_selected = True
@@ -3258,13 +3276,70 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetMovable
         )
 
-        # --- Scrollable, responsive area
+        # --- Horizontal dock container: optional quick-class table + controls
+        dock_container = QtWidgets.QWidget()
+        dock_layout = QtWidgets.QHBoxLayout(dock_container)
+        dock_layout.setContentsMargins(0, 0, 0, 0)
+        dock_layout.setSpacing(0)
+        self.setWidget(dock_container)
+
+        self.quickClassPanel = QtWidgets.QFrame()
+        self.quickClassPanel.setObjectName("QuickClassPanel")
+        self.quickClassPanel.setMinimumWidth(165)
+        self.quickClassPanel.setMaximumWidth(220)
+        self.quickClassPanel.setVisible(False)
+        self.quickClassPanel.setStyleSheet("""
+            #QuickClassPanel {
+                background: #FFFFFF;
+                border-right: 1px solid #D0D5DD;
+            }
+        """)
+        quick_layout = QtWidgets.QVBoxLayout(self.quickClassPanel)
+        quick_layout.setContentsMargins(8, 12, 8, 12)
+        quick_layout.setSpacing(8)
+
+        quick_title = QtWidgets.QLabel("Quick Classes")
+        quick_title.setStyleSheet("font-size: 12px; font-weight: 600; color: #101828;")
+        quick_layout.addWidget(quick_title)
+
+        self.quickClassTable = QtWidgets.QTableWidget(0, 1)
+        self.quickClassTable.setHorizontalHeaderLabels(["Class · file order"])
+        self.quickClassTable.setEditTriggers(QABSTRACTITEMVIEW_NO_EDIT_TRIGGERS)
+        self.quickClassTable.setSelectionBehavior(QABSTRACTITEMVIEW_SELECT_ROWS)
+        self.quickClassTable.setSelectionMode(QABSTRACTITEMVIEW_SINGLE_SELECTION)
+        self.quickClassTable.setAlternatingRowColors(True)
+        self.quickClassTable.verticalHeader().setVisible(False)
+        self.quickClassTable.horizontalHeader().setSectionResizeMode(QHEADERVIEW_STRETCH)
+        self.quickClassTable.horizontalHeader().setSectionsClickable(True)
+        self.quickClassTable.setStyleSheet("""
+            QTableWidget {
+                border: 1px solid #EAECF0;
+                background: #FFFFFF;
+                alternate-background-color: #F9FAFB;
+                gridline-color: #EAECF0;
+                font-size: 11px;
+            }
+            QTableWidget::item { padding: 6px; }
+            QTableWidget::item:selected { background: #1570EF; color: #FFFFFF; }
+            QHeaderView::section {
+                background: #F2F4F7;
+                color: #344054;
+                border: none;
+                border-bottom: 1px solid #D0D5DD;
+                padding: 7px;
+                font-weight: 600;
+            }
+        """)
+        quick_layout.addWidget(self.quickClassTable)
+        dock_layout.addWidget(self.quickClassPanel)
+
+        # --- Scrollable, responsive control area
         scroll_area = QtWidgets.QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Disable horizontal scroll
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)     # Only show vertical when needed
         scroll_area.setStyleSheet("QScrollArea { border: none; background: #f8f9fa; }")
-        self.setWidget(scroll_area)
+        dock_layout.addWidget(scroll_area, 1)
 
         main_widget = QtWidgets.QWidget()
         main_widget.setFont(QtGui.QFont("Segoe UI", base_font_size))
@@ -3489,6 +3564,25 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         # --- Class Selection ---
         class_card, class_layout = create_card("Class Selection", "🏷️")
 
+        # Catalogue controls stay above the dropdown for quick access.
+        class_catalog_layout = QtWidgets.QHBoxLayout()
+        self.refreshClassesBtn = QtWidgets.QPushButton("↻ Refresh")
+        self.expandClassesBtn = QtWidgets.QPushButton("▤ Expand")
+        for btn in [self.refreshClassesBtn, self.expandClassesBtn]:
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setAutoDefault(False)
+            btn.setDefault(False)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 10px; padding: 6px; border-radius: 7px;
+                    background: #FFF; border: 1px solid #D0D5DD;
+                }
+                QPushButton:hover { background: #F9FAFB; }
+            """)
+            class_catalog_layout.addWidget(btn)
+        class_layout.addLayout(class_catalog_layout)
+
         # Class dropdown
         self.classComboBox = QtWidgets.QComboBox()
         self.classComboBox.addItem("-- Select Class --", None)
@@ -3516,11 +3610,12 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         """)  # Reduced padding and font-size
         class_layout.addWidget(self.currentClassLabel)
 
-        # Add/Edit buttons
+        # Add/Edit/Load buttons
         class_btn_layout = QtWidgets.QHBoxLayout()
         self.addClassBtn = QtWidgets.QPushButton("➕ Add")
         self.editClassBtn = QtWidgets.QPushButton("✏️ Edit")
-        for btn in [self.addClassBtn, self.editClassBtn]:
+        self.loadClassBtn = QtWidgets.QPushButton("📄 Load")
+        for btn in [self.addClassBtn, self.editClassBtn, self.loadClassBtn]:
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setAutoDefault(False)
             btn.setDefault(False)
@@ -3824,7 +3919,13 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         self.saveDebugSwitch.toggled.connect(self._on_debug_toggle)
         self.addClassBtn.clicked.connect(self._add_new_class)
         self.editClassBtn.clicked.connect(self._edit_classes)
+        self.loadClassBtn.clicked.connect(self._load_classes_from_file)
+        self.refreshClassesBtn.clicked.connect(self._restore_default_classes)
+        self.expandClassesBtn.clicked.connect(self._toggle_quick_class_panel)
         self.classComboBox.currentTextChanged.connect(self._on_class_changed)
+        self.quickClassTable.cellClicked.connect(self._on_quick_class_selected)
+        self.quickClassTable.horizontalHeader().sectionClicked.connect(
+            self._cycle_quick_class_sort)
         self.pointModeBtn.clicked.connect(self._activate_point_tool)
         self.bboxModeBtn.clicked.connect(self._activate_bbox_tool)
         self.undoBtn.clicked.connect(self._undo_last_polygon)
@@ -3841,6 +3942,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
         # Refresh model options in case SAM3 was downloaded during init
         self._refresh_model_options()
+        self._populate_quick_class_table()
 
     def _select_output_folder(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(
@@ -3867,6 +3969,161 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             self._update_status("💾 Debug masks will be saved", "info")
         else:
             self._update_status("🚫 Debug masks disabled", "info")
+
+    def _load_classes_from_file(self):
+        """Replace the active class catalogue from a TXT or CSV file."""
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Load Class List",
+            str(pathlib.Path.home()),
+            "Class lists (*.txt *.csv);;Text files (*.txt);;CSV files (*.csv)")
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'r', encoding='utf-8-sig') as class_file:
+                class_names = parse_class_list_text(class_file.read())
+        except (OSError, UnicodeError) as exc:
+            self._update_status(f"Could not read class file: {exc}", "error")
+            QtWidgets.QMessageBox.warning(
+                self, "Class File Error", f"Could not read the selected file:\n{exc}")
+            return
+
+        if not class_names:
+            self._update_status("No class names found in the selected file", "warning")
+            return
+
+        catalogue = build_class_catalog(
+            class_names, self.DEFAULT_CLASSES, self.EXTRA_COLORS)
+        self._replace_class_catalog(catalogue)
+
+        helper_count = sum(
+            info.get('helper_family', 'general') != 'general'
+            for info in catalogue.values())
+        self._update_status(
+            f"📄 Loaded {len(catalogue)} classes from {pathlib.Path(file_path).name} "
+            f"({helper_count} specialised helper match(es))",
+            "info")
+
+    def _restore_default_classes(self):
+        """Restore the complete built-in catalogue in its declared order."""
+        catalogue = build_class_catalog(
+            list(self.DEFAULT_CLASSES.keys()), self.DEFAULT_CLASSES, self.EXTRA_COLORS)
+        self._replace_class_catalog(catalogue)
+        self._update_status(
+            f"↻ Restored {len(catalogue)} default classes", "info")
+
+    def _replace_class_catalog(self, catalogue):
+        """Install a catalogue and refresh both class-selection views."""
+        previous_class = self.current_class
+        self.classes = catalogue
+        self.class_source_order = list(catalogue.keys())
+        self.quick_class_sort_mode = 'source'
+        self.current_class = previous_class if previous_class in catalogue else None
+        self._refresh_class_combo()
+        self._populate_quick_class_table()
+
+    def _toggle_quick_class_panel(self):
+        """Expand or collapse the one-click class table left of the controls."""
+        self.quick_class_expanded = not self.quick_class_expanded
+        self.quickClassPanel.setVisible(self.quick_class_expanded)
+
+        if self.quick_class_expanded:
+            self.expandClassesBtn.setText("▥ Collapse")
+            self.setMinimumWidth(480)
+            self.setMaximumWidth(700)
+            self.resize(max(self.width(), 560), self.height())
+            self._populate_quick_class_table()
+        else:
+            self.expandClassesBtn.setText("▤ Expand")
+            self.setMinimumWidth(300)
+            self.setMaximumWidth(450)
+            self.resize(min(self.width(), 450), self.height())
+
+        QtWidgets.QApplication.processEvents()
+        self._clear_widget_focus()
+
+    def _ordered_quick_class_names(self):
+        """Return class names in source, ascending, or descending order."""
+        return order_class_names(
+            self.class_source_order,
+            self.classes.keys(),
+            self.quick_class_sort_mode)
+
+    def _populate_quick_class_table(self):
+        """Rebuild the quick-selection table without changing the active class."""
+        if not hasattr(self, 'quickClassTable'):
+            return
+
+        headers = {
+            'source': "Class · file order",
+            'ascending': "Class · A–Z ▲",
+            'descending': "Class · Z–A ▼",
+        }
+        class_names = self._ordered_quick_class_names()
+        self.quickClassTable.blockSignals(True)
+        self.quickClassTable.setHorizontalHeaderLabels(
+            [headers[self.quick_class_sort_mode]])
+        self.quickClassTable.setRowCount(len(class_names))
+
+        selected_row = None
+        for row, class_name in enumerate(class_names):
+            item = QtWidgets.QTableWidgetItem(class_name)
+            item.setData(QT_USER_ROLE, class_name)
+            class_info = self.classes.get(class_name, {})
+            helper_family = class_info.get('helper_family', 'general')
+            item.setToolTip(
+                f"{class_info.get('description', 'Class')}\nHelper: {helper_family}")
+            self.quickClassTable.setItem(row, 0, item)
+            if class_name == self.current_class:
+                selected_row = row
+
+        if selected_row is not None:
+            self.quickClassTable.selectRow(selected_row)
+        else:
+            self.quickClassTable.clearSelection()
+        self.quickClassTable.blockSignals(False)
+
+    def _cycle_quick_class_sort(self, section):
+        """Cycle file order, A–Z, and Z–A from the table header."""
+        if section != 0:
+            return
+        next_mode = {
+            'source': 'ascending',
+            'ascending': 'descending',
+            'descending': 'source',
+        }
+        self.quick_class_sort_mode = next_mode[self.quick_class_sort_mode]
+        self._populate_quick_class_table()
+
+    def _on_quick_class_selected(self, row, column):
+        """Synchronise a one-click table selection with the class dropdown."""
+        item = self.quickClassTable.item(row, column)
+        if item is None:
+            return
+        class_name = item.data(QT_USER_ROLE) or item.text()
+        index = self.classComboBox.findData(class_name)
+        if index >= 0:
+            if self.classComboBox.currentIndex() == index:
+                self._activate_point_tool()
+                self._clear_widget_focus()
+            else:
+                self.classComboBox.setCurrentIndex(index)
+
+    def _select_quick_class_row(self, class_name):
+        """Reflect dropdown selection in the quick table."""
+        if not hasattr(self, 'quickClassTable'):
+            return
+        self.quickClassTable.blockSignals(True)
+        self.quickClassTable.clearSelection()
+        for row in range(self.quickClassTable.rowCount()):
+            item = self.quickClassTable.item(row, 0)
+            if item and item.data(QT_USER_ROLE) == class_name:
+                self.quickClassTable.selectRow(row)
+                if self.quick_class_expanded:
+                    self.quickClassTable.scrollToItem(item)
+                break
+        self.quickClassTable.blockSignals(False)
 
     def _clear_widget_focus(self):
         """Clear focus from all widgets and return it to map canvas"""
@@ -3934,6 +4191,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             # Reset to default values when no class selected
             self._reset_batch_defaults()
 
+        self._select_quick_class_row(self.current_class)
         self._clear_widget_focus()
 
     def _apply_class_batch_defaults(self, class_info):
@@ -3961,29 +4219,33 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
     def _add_new_class(self):
         class_name, ok = QtWidgets.QInputDialog.getText(
             self, 'Add Class', 'Enter class name:')
-        if ok and class_name and class_name not in self.classes:
-            used_colors = [info['color'] for info in self.classes.values()]
-            available_colors = [
-                c for c in self.EXTRA_COLORS if c not in used_colors]
+        class_name = class_name.strip()
+        if not ok or not class_name:
+            return
 
-            if available_colors:
-                color = available_colors[0]
-            else:
-                import random
-                color = f"{random.randint(100,255)},{random.randint(100,255)},{random.randint(100,255)}"
+        normalized_names = {
+            normalize_class_name(existing) for existing in self.classes}
+        if normalize_class_name(class_name) in normalized_names:
+            self._update_status(f"Class already exists: {class_name}", "warning")
+            return
 
-            description = f'Custom class: {class_name}'
+        class_info = build_class_catalog(
+            [class_name], self.DEFAULT_CLASSES, self.EXTRA_COLORS)[class_name]
+        if class_info.get('source') == 'custom':
+            used_colors = {info['color'] for info in self.classes.values()}
+            for color in self.EXTRA_COLORS:
+                if color not in used_colors:
+                    class_info['color'] = color
+                    break
 
-            # NEW: Add default batch settings for new classes
-            self.classes[class_name] = {
-                'color': color, 
-                'description': description,
-                'batch_defaults': {'min_size': 50, 'max_objects': 25}  # Generic defaults
-            }
+        self.classes[class_name] = class_info
+        self.class_source_order.append(class_name)
+        self._refresh_class_combo()
+        self._populate_quick_class_table()
 
-            self.classComboBox.addItem(class_name, class_name)
-            self._update_status(
-                f"Added class: {class_name} (RGB:{color}) with default batch settings", "info")
+        helper_family = class_info.get('helper_family', 'general')
+        self._update_status(
+            f"Added class: {class_name} · {helper_family} inference", "info")
 
     def _edit_classes(self):
         class_list = list(self.classes.keys())
@@ -4000,6 +4262,17 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                 self, 'Edit Class Name', f'Edit name for {class_name}:', text=class_name)
 
             if ok2 and new_name:
+                new_name = new_name.strip()
+                duplicate_names = {
+                    normalize_class_name(name)
+                    for name in self.classes
+                    if name != class_name
+                }
+                if normalize_class_name(new_name) in duplicate_names:
+                    self._update_status(
+                        f"Class already exists: {new_name}", "warning")
+                    return
+
                 current_color = current_info['color']
                 new_color, ok3 = QtWidgets.QInputDialog.getText(
                     self, 'Edit Color', f'Edit color for {new_name} (R,G,B):', text=current_color)
@@ -4008,14 +4281,28 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
                     try:
                         parts = [int(p.strip()) for p in new_color.split(',')]
                         if len(parts) == 3 and all(0 <= p <= 255 for p in parts):
-                            if new_name != class_name:
-                                del self.classes[class_name]
+                            if new_name == class_name:
+                                updated_info = dict(current_info)
+                            else:
+                                updated_info = build_class_catalog(
+                                    [new_name], self.DEFAULT_CLASSES,
+                                    self.EXTRA_COLORS)[new_name]
+                            updated_info['color'] = new_color
 
-                            self.classes[new_name] = {
-                                'color': new_color,
-                                'description': current_info.get('description', f'Class: {new_name}')
-                            }
+                            rebuilt_classes = {}
+                            for existing_name in self.class_source_order:
+                                if existing_name == class_name:
+                                    rebuilt_classes[new_name] = updated_info
+                                elif existing_name in self.classes:
+                                    rebuilt_classes[existing_name] = self.classes[existing_name]
+                            self.classes = rebuilt_classes
+                            self.class_source_order = [
+                                new_name if name == class_name else name
+                                for name in self.class_source_order]
+                            if self.current_class == class_name:
+                                self.current_class = new_name
                             self._refresh_class_combo()
+                            self._populate_quick_class_table()
                             self._update_status(
                                 f"Updated {new_name} with RGB({new_color})", "info")
                         else:
@@ -4185,16 +4472,24 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
     def _refresh_class_combo(self):
         current_class = self.current_class
+        self.classComboBox.blockSignals(True)
         self.classComboBox.clear()
         self.classComboBox.addItem("-- Select Class --", None)
 
-        for class_name, class_info in self.classes.items():
+        for class_name in self.class_source_order:
+            if class_name not in self.classes:
+                continue
             self.classComboBox.addItem(class_name, class_name)
 
         if current_class and current_class in self.classes:
             index = self.classComboBox.findData(current_class)
             if index >= 0:
                 self.classComboBox.setCurrentIndex(index)
+        else:
+            self.current_class = None
+            self.classComboBox.setCurrentIndex(0)
+        self.classComboBox.blockSignals(False)
+        self._on_class_changed()
 
     def _detect_tile_layer_type(self, layer):
         """Detect if layer is a tile service (XYZ, WMS, WMTS) and return type"""
@@ -6859,8 +7154,14 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
             options.fileEncoding = "utf-8"
             options.ct = QgsCoordinateTransform(layer.crs(), layer.crs(), QgsProject.instance())
             transform_context = QgsProject.instance().transformContext()
-            error, error_msg = QgsVectorFileWriter.writeAsVectorFormatV3(
+            writer_result = QgsVectorFileWriter.writeAsVectorFormatV3(
                 layer, export_path, transform_context, options)
+
+            # QGIS versions return either two or four values here. The file can
+            # be written successfully before a two-value unpack raises, which
+            # previously caused GeoOSAM to display "No segments found" despite
+            # a valid export on disk.
+            error, error_msg = unpack_vector_writer_result(writer_result)
 
             if error == QgsVectorFileWriter.WriterError.NoError:
                 print(f"💾 Exported {class_name}: {export_path}")
@@ -6940,6 +7241,9 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
         self.classComboBox.setEnabled(enabled)
         self.addClassBtn.setEnabled(enabled)
         self.editClassBtn.setEnabled(enabled)
+        self.loadClassBtn.setEnabled(enabled)
+        self.refreshClassesBtn.setEnabled(enabled)
+        self.quickClassTable.setEnabled(enabled)
         self.exportBtn.setEnabled(enabled)
         self.selectFolderBtn.setEnabled(True)
         self.saveDebugSwitch.setEnabled(True)
