@@ -104,6 +104,23 @@ Related subclasses automatically inherit the closest helper logic and tuned batc
 4. Colors update automatically in map visualization
 5. **Tip**: Use logical color schemes (blue for water, green for vegetation)
 
+#### 📄 **Loading Class Lists**
+
+1. Click **Load** and select a `.txt` or `.csv` file.
+2. Class names may be comma-separated, line-separated, or use both formats.
+3. File order is preserved and duplicate or blank names are ignored.
+4. Exact built-in classes retain their full configuration. Reliable aliases
+   reuse the matching specialised helper; unknown classes use general inference.
+5. Click **Refresh** to restore the complete built-in catalogue.
+
+#### ⚡ **One-click Class Table**
+
+- Click **Expand** to open the quick class table between the map and the normal
+  control panel.
+- Select any row to switch class and immediately return focus to point labeling.
+- Click the **Class** header to cycle file order, A–Z, and Z–A sorting.
+- The table and dropdown always remain synchronized.
+
 ### Segmentation Experience
 
 #### 🎯 **Point Mode** (Default & Recommended)

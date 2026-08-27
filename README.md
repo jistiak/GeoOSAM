@@ -25,6 +25,7 @@
 - **↶ Undo Support**: Mistake correction with polygon-level undo
 - **📁 Custom Output**: User-selectable output folders
 - **🎨 Class Management**: Custom classes with color coding
+- **⚡ Rapid Class Switching**: Load TXT/CSV class lists and use a sortable one-click class table
 - **📡 Smart Workflow**: Auto-raster selection, progress tracking
 - **💾 Professional Export**: Multi-format export (GeoPackage, Shapefile, GeoJSON, FlatGeobuf)
 - **🔧 Adaptive Processing**: Optimized based on zoom level and hardware
