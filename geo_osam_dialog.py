@@ -78,35 +78,35 @@ QT_USER_ROLE = qt_enum(Qt, "ItemDataRole.UserRole", "UserRole")
 # fmt: off
 plugin_dir = os.path.dirname(os.path.abspath(__file__))
 
-
-def ensure_sys_path(path):
-    """Append a path once, using normalized comparisons for cross-platform safety."""
-    if path in sys.path:
-        return
-
-    normalized_path = os.path.normcase(os.path.normpath(path))
-    if all(
-        os.path.normcase(os.path.normpath(existing_path)) != normalized_path
-        for existing_path in sys.path
-        if existing_path is not None
-    ):
-        sys.path.append(path)
-
-
+# Meta's bundled SAM2 package and its Hydra configs use absolute ``sam2.*``
+# imports internally. QGIS imports this plugin as ``GeoOSAM``, so the plugin
+# directory itself must be available before SAM2 is imported.
 if __package__:
+    from .import_utils import ensure_import_path
     from .helpers import create_detection_helper, class_uses_helper, normalize_class_name
     from .class_catalog import (
         build_class_catalog, order_class_names, parse_class_list_text)
     from .qgis_compat import unpack_vector_writer_result
-    from .sam2.build_sam import build_sam2
-    from .sam2.sam2_image_predictor import SAM2ImagePredictor
 else:
-    ensure_sys_path(plugin_dir)
+    from import_utils import ensure_import_path
     from helpers import create_detection_helper, class_uses_helper, normalize_class_name
     from class_catalog import build_class_catalog, order_class_names, parse_class_list_text
     from qgis_compat import unpack_vector_writer_result
-    from sam2.build_sam import build_sam2
-    from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+ensure_import_path(plugin_dir, prepend=True)
+
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+
+def _load_license_manager():
+    """Import the local license manager in package and standalone contexts."""
+    if __package__:
+        from .geo_osam_license import LicenseManager
+    else:
+        from geo_osam_license import LicenseManager
+    return LicenseManager
+
 
 # Ultralytics SAM2.1 setup
 SAM21_AVAILABLE = False
@@ -183,7 +183,10 @@ SAM3_WEIGHTS_URL = "https://huggingface.co/facebook/sam3/resolve/main/sam3.pt"
 
 # Apply SAM3 CLIP tokenizer fix
 try:
-    from sam3_clip_fix import apply_sam3_clip_fix, check_sam3_text_available
+    if __package__:
+        from .sam3_clip_fix import apply_sam3_clip_fix, check_sam3_text_available
+    else:
+        from sam3_clip_fix import apply_sam3_clip_fix, check_sam3_text_available
     if check_sam3_text_available():
         apply_sam3_clip_fix()
 except ImportError:
@@ -2927,7 +2930,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
     def _show_license_dialog(self):
         """Show license key entry/management dialog"""
-        from geo_osam_license import LicenseManager
+        LicenseManager = _load_license_manager()
 
         # Create dialog
         dialog = QtWidgets.QDialog(self)
@@ -3037,7 +3040,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
     def _activate_license(self, dialog, email, key):
         """Validate and activate entered license key"""
-        from geo_osam_license import LicenseManager
+        LicenseManager = _load_license_manager()
 
         # Validate inputs
         email = email.strip()
@@ -3099,7 +3102,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
     def _change_license(self, dialog):
         """Allow user to change their license"""
-        from geo_osam_license import LicenseManager
+        LicenseManager = _load_license_manager()
 
         reply = QtWidgets.QMessageBox.question(
             dialog,
@@ -3118,7 +3121,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
     def _remove_license(self, dialog):
         """Remove the current license"""
-        from geo_osam_license import LicenseManager
+        LicenseManager = _load_license_manager()
 
         reply = QtWidgets.QMessageBox.question(
             dialog,
@@ -3145,7 +3148,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
     def _check_raster_access(self):
         """Check if user can access entire raster mode"""
-        from geo_osam_license import LicenseManager
+        LicenseManager = _load_license_manager()
 
         if LicenseManager.has_raster_access():
             return True
@@ -3174,7 +3177,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
     def _update_license_status(self):
         """Update license status label in UI"""
-        from geo_osam_license import LicenseManager
+        LicenseManager = _load_license_manager()
 
         if not hasattr(self, 'licenseStatusLabel'):
             return
@@ -3190,7 +3193,7 @@ class GeoOSAMControlPanel(QtWidgets.QDockWidget):
 
     def _on_scope_changed(self, index):
         """Handle scope selection change"""
-        from geo_osam_license import LicenseManager
+        LicenseManager = _load_license_manager()
 
         # Only check if SAM3 model is selected
         if self.model_choice != "SAM3":

@@ -50,6 +50,32 @@ def test_similar_helper_matching_is_conservative():
     assert get_class_family('Unrelated object') == 'general'
 
 
+def test_german_class_names_reuse_matching_helpers_without_becoming_defaults():
+    expected_families = {
+        'Gebäude': 'building',
+        'Wohngebiet': 'residential',
+        'Fahrzeuge': 'vehicle',
+        'Schiffe': 'vessel',
+        'Gewässer': 'water',
+        'Ackerland': 'agriculture',
+        'Straßen': 'road',
+        'Baumkronen': 'vegetation',
+    }
+
+    for class_name, family in expected_families.items():
+        assert get_class_family(class_name) == family
+
+    catalogue = build_class_catalog(
+        ['Gebäudedach', 'Rotes Dach'], DEFAULTS, ['1,2,3'])
+    assert catalogue['Gebäudedach']['source'] == 'custom'
+    assert catalogue['Gebäudedach']['helper_family'] == 'building'
+    assert catalogue['Rotes Dach']['helper_family'] == 'building'
+
+
+def test_ambiguous_german_helper_name_stays_generic():
+    assert get_class_family('Wasser Straße') == 'general'
+
+
 def test_quick_table_sorting_keeps_a_restorable_source_order():
     source = ['Water', 'Tree', 'Buildings']
 

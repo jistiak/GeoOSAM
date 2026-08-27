@@ -23,6 +23,18 @@
  This script initializes the plugin, making it known to QGIS.
 """
 
+import os
+
+from .import_utils import ensure_import_path
+
+
+# QGIS loads this directory as the ``GeoOSAM`` package.  Meta's bundled SAM2
+# code and its Hydra configuration intentionally use top-level ``sam2.*``
+# imports, so make the plugin directory importable before classFactory imports
+# any of the implementation modules.
+PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
+ensure_import_path(PLUGIN_DIR, prepend=True)
+
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name

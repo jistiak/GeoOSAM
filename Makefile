@@ -44,15 +44,18 @@ PLUGINNAME = geo_osam
 
 PY_FILES = \
 	__init__.py \
-	geo_osam.py geo_osam_dialog.py
+	geo_osam.py geo_osam_dialog.py \
+	geo_osam_license.py sam3_clip_fix.py \
+	class_catalog.py class_matching.py import_utils.py qgis_compat.py \
+	resources_rc.py
 
 UI_FILES = geo_osam_dialog_base.ui
 
 EXTRAS = metadata.txt icon.png
 
-EXTRA_DIRS =
+EXTRA_DIRS = sam2 helpers scripts
 
-COMPILED_RESOURCE_FILES = resources.py
+COMPILED_RESOURCE_FILES = resources_rc.py
 
 PEP8EXCLUDE=pydev,resources.py,conf.py,third_party,ui
 
@@ -87,6 +90,9 @@ default:
 	@echo See https://g-sherman.github.io/plugin_build_tool/ for info. 
 
 compile: $(COMPILED_RESOURCE_FILES)
+
+resources_rc.py: resources.qrc $(RESOURCE_SRC)
+	pyrcc5 -o $@ $<
 
 %.py : %.qrc $(RESOURCES_SRC)
 	pyrcc5 -o $*.py  $<
@@ -127,8 +133,7 @@ deploy: compile doc transcompile
 	cp -vf $(EXTRAS) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr i18n $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr $(HELP) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/help
-	# Copy extra directories if any
-	(foreach EXTRA_DIR,(EXTRA_DIRS), cp -R (EXTRA_DIR) (HOME)/(QGISDIR)/python/plugins/(PLUGINNAME)/;)
+	cp -vfr $(EXTRA_DIRS) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 
 
 # The dclean target removes compiled python files from plugin directory
