@@ -79,18 +79,27 @@ QT_USER_ROLE = qt_enum(Qt, "ItemDataRole.UserRole", "UserRole")
 plugin_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def ensure_sys_path(path):
-    """Append a path once, using normalized comparisons for cross-platform safety."""
-    if path in sys.path:
-        return
-
+def ensure_sys_path(path, prepend=False):
+    """Add an import path once, using normalized cross-platform comparisons."""
     normalized_path = os.path.normcase(os.path.normpath(path))
-    if all(
-        os.path.normcase(os.path.normpath(existing_path)) != normalized_path
-        for existing_path in sys.path
-        if existing_path is not None
-    ):
+    for index, existing_path in enumerate(sys.path):
+        if existing_path is None:
+            continue
+        if os.path.normcase(os.path.normpath(existing_path)) == normalized_path:
+            if prepend and index != 0:
+                sys.path.insert(0, sys.path.pop(index))
+            return
+
+    if prepend:
+        sys.path.insert(0, path)
+    else:
         sys.path.append(path)
+
+
+# Meta's bundled SAM2 package and its Hydra configs use absolute ``sam2.*``
+# imports internally. QGIS imports this plugin as ``GeoOSAM``, so the plugin
+# directory itself must be available before SAM2 is imported.
+ensure_sys_path(plugin_dir, prepend=True)
 
 
 if __package__:
@@ -98,15 +107,13 @@ if __package__:
     from .class_catalog import (
         build_class_catalog, order_class_names, parse_class_list_text)
     from .qgis_compat import unpack_vector_writer_result
-    from .sam2.build_sam import build_sam2
-    from .sam2.sam2_image_predictor import SAM2ImagePredictor
 else:
-    ensure_sys_path(plugin_dir)
     from helpers import create_detection_helper, class_uses_helper, normalize_class_name
     from class_catalog import build_class_catalog, order_class_names, parse_class_list_text
     from qgis_compat import unpack_vector_writer_result
-    from sam2.build_sam import build_sam2
-    from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 # Ultralytics SAM2.1 setup
 SAM21_AVAILABLE = False
